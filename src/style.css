@@ -142,3 +142,18 @@ input[type=search] { width:100%; max-width:480px; padding:12px 14px; border:1px 
 .sw { min-height: 104px; } .sw .use { font-size: 11px; line-height: 1.35; opacity: .85; margin-top: 2px; } .sw .use.none { opacity: .6; font-style: italic; }
 
 .feel { font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 4px 0 8px; } .feel b { margin-right: 4px; }
+
+/* layout switcher on brand page */
+.layout-bar { display: flex; gap: 12px; align-items: flex-start; margin: 0 0 8px; } .layout-bar .flabel { padding-top: 6px; }
+.layout-bar .chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; } .layout-bar .chip { flex: none; }
+.layout-desc { font-size: 14px; margin: 0 0 12px; }
+/* patterns gallery */
+.pat-pick { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 8px; } .pat-pick select { padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: inherit; min-width: 220px; }
+.pat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; padding-bottom: 24px; }
+.pat { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; display: flex; flex-direction: column; } .pat-body { padding: 16px 18px 20px; display: grid; gap: 8px; align-content: start; flex: 1; } .pat-body h3 { margin: 0; font-size: 18px; } .pat-body h3 span { color: var(--mute); font-weight: 400; font-size: 14px; margin-left: 6px; } .pat-body p { margin: 0; color: var(--mute); font-size: 14px; } .pat-n { color: var(--acc); font-weight: 600; font-size: 12px; } .pat-body .tags { display: flex; gap: 6px; flex-wrap: wrap; } .pat-body .btn { justify-self: start; margin-top: 4px; }
+.pat-credit { margin: 8px 0 64px; font-size: 14px; }
+.wire { background: var(--acc-soft); height: 150px; padding: 14px; border-bottom: 1px solid var(--line); display: flex; } .wire .w { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 4px; height: 14px; margin-bottom: 8px; } .wire .w.h { height: 36px; } .wire .w.s { height: 26px; } .wire .w.solid { background: var(--acc); border-color: var(--acc); } .wire .w.nav { height: 12px; } .wire .w.btnw { width: 34%; height: 16px; background: var(--acc); border-color: var(--acc); } .wire .w.full { height: 100%; }
+.w-col { flex: 1; display: flex; flex-direction: column; } .w-row { flex: 1; display: flex; gap: 8px; } .w-c { flex: 1; display: flex; flex-direction: column; } .w-c.side { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 6px; } .w-c.side .w { background: var(--acc-soft); } .w-c.solid { background: var(--acc); border-radius: 4px; } .w-row .w { flex: 1; height: auto; min-height: 40px; } .w-grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .w-grid .w { height: auto; margin: 0; } .w-mas { flex: 1; display: flex; gap: 8px; } .w-mas > div { flex: 1; display: flex; flex-direction: column; } .w-mas .w { height: 44px; } .w-mas .w.s { height: 28px; }
+/* rules tab */
+.rules .rh { margin: 18px 0 8px; font-size: 17px; } .rules ul { padding-left: 20px; display: grid; gap: 6px; } .dd { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; } .dd-do h3 { color: #1a7f45; } .dd-dont h3 { color: #c0392b; }
+@media (max-width: 760px) { .dd { grid-template-columns: 1fr; } .layout-bar { flex-direction: column; gap: 4px; } }

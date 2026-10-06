@@ -2,6 +2,7 @@
 // The copy is generic sample text; only colors / type / radii / spacing come from DESIGN.md.
 import { esc } from './md.mjs';
 import { parseColor, readableOn, resolveRef, luminance, contrast } from './theme.mjs';
+import { renderLayout } from '../../src/layouts.mjs';
 
 const SAFE = /^[#\w().,%\s/+*'"-]+$/;
 const css = (v, fb = '') => (typeof v === 'string' && SAFE.test(v) ? v : fb);
@@ -185,6 +186,17 @@ function detectFeel(b, theme, o) {
   return { upper, gradient, flat, tiles, monoTok: monoTok ? monoTok[1] : null, editorial, secPad, traits, classes };
 }
 
+/** Box-shadow values the brand documents in its Elevation section. */
+function extractShadows(body) {
+  const sec = (body.match(/##\s*Elevation[\s\S]*?(?=\n##\s|$)/i) || [''])[0];
+  const out = [];
+  for (const m of sec.matchAll(/`([^`\n]*\d+px[^`\n]*)`/g)) {
+    const v = m[1].replace(/^box-shadow:\s*/i, '').trim();
+    if (/(rgba?\(|#[0-9a-f]{3,8})/i.test(v) && /^[#\w().,%\s/+*-]+$/.test(v) && !/^none$/i.test(v)) out.push(v);
+  }
+  return out.slice(0, 3);
+}
+
 export function renderLanding(b, theme, ctx) {
   const t = b.tokens, get = (v) => resolveRef(v, t);
   const copy = COPY[b.category] || COPY.other;
@@ -211,6 +223,20 @@ export function renderLanding(b, theme, ctx) {
   const secFg = parseColor(get(S.textColor)) ? css(get(S.textColor)) : theme.ink;
   const padBtn = css(String(P.padding ?? '11px 20px').replace(/(\d+(?:\.\d+)?)px/g, (_, n) => `${Math.min(parseFloat(n), 28)}px`), '11px 20px');
 
+  const colorOf = (v) => (parseColor(get(v)) ? css(get(v)) : null);
+  const navC = t.components[comp(/^nav|top-nav|nav-bar|header-bar/)] || {};
+  const pillC = t.components[comp(/(^|-)(tag|pill|chip|badge)(-|$)/, /pressed|hover|focus|disabled|active|button|nav/)] || {};
+  const footC = t.components[comp(/footer/)] || {};
+  const navBg = colorOf(navC.backgroundColor), navFg = colorOf(navC.textColor);
+  const pillBg = colorOf(pillC.backgroundColor), pillFgRaw = colorOf(pillC.textColor);
+  const pillFg = pillBg ? (pillFgRaw && contrast(parseColor(pillFgRaw), parseColor(pillBg)) >= 3 ? pillFgRaw : readableOn(parseColor(pillBg))) : null;
+  const footBg = colorOf(footC.backgroundColor), footFgRaw = colorOf(footC.textColor);
+  const footFg = footBg ? (footFgRaw && contrast(parseColor(footFgRaw), parseColor(footBg)) >= 4.5 ? footFgRaw : readableOn(parseColor(footBg))) : null;
+  const cardPad = C.padding ? css(String(C.padding).replace(/(\d+(?:\.\d+)?)px/g, (_, n) => `${Math.min(parseFloat(n), 40)}px`), '') : '';
+  const shadows = extractShadows(b.body);
+  const tyBy = (re) => (tyList.find(([k]) => re.test(k)) || [])[1];
+  const h3Ty = tyBy(/^(heading-(sm|md)|title-(sm|md)|card-title|subhead)/) || tyBy(/heading|title/);
+  const capTy = tyBy(/^(caption|micro|small|fine)/), ebTy = tyBy(/eyebrow|micro-cap|overline/), navTy = tyBy(/^(nav|link)/) || tyBy(/^body-sm|^body-md/);
   const R = buildPalette(t.colors, theme, { priBg, priFg, secFg });
   if (ctx) ctx.usage = R.usage;
   const P2 = R.vars;
@@ -227,39 +253,32 @@ export function renderLanding(b, theme, ctx) {
     ...T.tiles.flatMap((x, i) => [`--tile${i + 1}:${css(x.value, '#ccc')}`, `--ontile${i + 1}:${readableOn(x.c)}`]), `--sec-pad:${T.secPad}px`, `--fe:${fontFor(T.monoTok?.fontFamily || display?.fontFamily)}`,
     `--feat-bg:${css(R.hasBand ? P2.band1 : inv, '#111')}`, `--feat-fg:${css(R.hasBand ? P2.onband1 : onInv, '#fff')}`,
     `--r-btn:${radBtn}`, `--r-card:${radCard}`, `--r-in:${radIn}`, `--pad-btn:${padBtn}`,
+    ...(navBg ? [`--nav-bg:${navBg}`, `--nav-fg:${navFg || readableOn(parseColor(navBg))}`] : []),
+    ...(pillBg ? [`--pill-bg:${pillBg}`, `--pill-fg:${pillFg}`, `--pill-r:${css(get(pillC.rounded), '9999px')}`] : []),
+    ...(footBg ? [`--foot-bg:${footBg}`, `--foot-fg:${footFg}`] : []),
+    ...(cardPad ? [`--card-pad:${cardPad}`] : []), ...(shadows[0] ? [`--sh1:${shadows[0]}`, `--sh2:${shadows[Math.min(1, shadows.length - 1)]}`] : []),
     `--sec-bg:${secBg}`, `--sec-fg:${secFg}`, `--fd:${fd}`, `--fb:${fb}`,
     tvars('h1', display, { size: 56, weight: 600, lh: 1.1 }),
     tvars('h2', heading || display, { size: 32, weight: 600, lh: 1.2 }),
     tvars('body', body, { size: 16, weight: 400, lh: 1.5 }),
-    tvars('btn', btnTy || body, { size: 15, weight: 500, lh: 1.2 })
+    tvars('btn', btnTy || body, { size: 15, weight: 500, lh: 1.2 }),
+    tvars('h3', h3Ty, { size: 19, weight: 600, lh: 1.3 }), tvars('cap', capTy, { size: 13, weight: 400, lh: 1.4 }),
+    tvars('eb', ebTy, { size: 13, weight: 600, lh: 1.3 }), tvars('nv', navTy, { size: 14, weight: 400, lh: 1.4 })
   ].join(';');
 
-  const editorial = T.editorial;
   const oneTime = b.category === 'auto' || b.category === 'hardware';
-  const feats = FEATURES_BY[b.category] || FEATURES;
-  const fine = FINE[b.category] || 'No credit card required · Free plan available';
-  const name = esc(b.name);
-
-  const appMock = `<div class="mock" aria-hidden="true">
-    <div class="mock-bar"><i></i><i></i><i></i><span></span></div>
-    <div class="mock-body">
-      <div class="mock-side">${['Overview', 'Projects', 'Activity', 'Reports', 'Settings'].map((x, i) => `<div class="${i === 0 ? 'on' : ''}">${x}</div>`).join('')}</div>
-      <div class="mock-main">
-        <div class="kpis"><div><small>Revenue</small><b>$48.2k</b></div><div><small>Active users</small><b>12,480</b></div><div><small>Conversion</small><b>3.8%</b></div></div>
-        <div class="chart">${[38, 52, 44, 68, 58, 80, 72, 94].map((h, i) => `<span style="height:${h}%;background:${i % 3 === 0 ? 'var(--a1)' : i % 3 === 1 ? 'var(--pri)' : 'var(--a2)'}"></span>`).join('')}</div>
-        <div class="rows">${[['Acme Inc.', 'Paid', '$2,400'], ['Globex', 'Pending', '$1,150'], ['Initech', 'Failed', '$880'], ['Umbrella', 'Paid', '$640']].map(([a, s, v]) => `<div><span>${a}</span><em class="pill ${s === 'Paid' ? 'ok' : s === 'Failed' ? 'err' : 'soft'}">${s}</em><b>${v}</b></div>`).join('')}</div>
-      </div>
-    </div></div>`;
-
   const specs = b.category === 'auto'
     ? [['3.2s', '0–100 km/h'], ['800 hp', 'Peak power'], ['340 km/h', 'Top speed'], ['1,380 kg', 'Dry weight']]
     : [['4.9★', 'Average rating'], ['2M+', 'Happy customers'], ['120+', 'Countries'], ['24/7', 'Support']];
-  const lightPriOnDark = theme.dark && luminance(parseColor(priBg) || parseColor(theme.primary)) > 0.6;
-  const editorialHero = `<div class="ed${lightPriOnDark ? ' soft' : ''}" aria-hidden="true"><div class="ed-hero"><span>${esc(copy.eyebrow)}</span><b>${name}</b></div>
-    <div class="ed-cards">${['Signature', 'Sport', 'Classic'].map((n, i) => `<div class="ed-card"><div class="ed-img" style="background:linear-gradient(${135 + i * 25}deg,color-mix(in srgb,var(--pri) ${[80, 55, 32][i]}%,var(--bg)),color-mix(in srgb,var(--pri) ${[30, 18, 8][i]}%,var(--sur)))"></div><h4>${n}</h4><p>From $${(49 + i * 20)},900</p><a class="lnk">Discover →</a></div>`).join('')}</div></div>`;
-
-  const priceTier = (title, price, items, featured, cta = 'Choose plan', per = '/mo') => `<div class="tier${featured ? ' feat' : ''}">${featured ? '<em class="pill">Most popular</em>' : ''}<h3>${title}</h3><div class="price">${price}${per ? `<small>${per}</small>` : ''}</div><ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul><a class="btn ${featured ? 'btn-inv' : 'btn-pri'}">${cta}</a></div>`;
-
+  const M = {
+    name: b.name, slug: b.slug, category: b.category,
+    copy: { ...copy, fine: FINE[b.category] || 'No credit card required · Free plan available' },
+    feats: FEATURES_BY[b.category] || FEATURES, editorial: T.editorial, oneTime, hasBand: R.hasBand, tileCount: T.tiles.length, specs,
+    lightPriOnDark: theme.dark && luminance(parseColor(priBg) || parseColor(theme.primary)) > 0.6
+  };
+  const name = esc(b.name);
+  const modelJson = JSON.stringify(M).replace(/</g, '\\u003c');
+  const lv = esc(ctx?.vLayouts || '');
   return `<!doctype html>
 <html lang="en" class="${T.classes}" style="${vars}">
 <head>
@@ -273,56 +292,15 @@ export function renderLanding(b, theme, ctx) {
 </head>
 <body class="${theme.dark ? 'is-dark' : ''}">
 <div class="ribbon"><a href="../../b/${esc(b.slug)}/">← กลับไปหน้า ${name}</a><span>หน้าทั่วไปที่ใส่สี/ฟอนต์/มุมโค้งจาก DESIGN.md · ไม่ใช่หน้าจริงของแบรนด์</span></div>
-<div class="announce"><span class="pill">${esc(copy.eyebrow)}</span> See what’s new in ${name} →</div>
-<header class="nav"><div class="in">
-  <b class="logo">${name}</b>
-  <nav>${copy.nav.map((n) => `<a>${n}</a>`).join('')}</nav>
-  <div class="nav-cta"><a class="btn btn-sec">Sign in</a><a class="btn btn-pri">${esc(copy.cta[0])}</a></div>
-</div></header>
-
-<section class="hero"><div class="in">
-  <p class="eyebrow">${esc(copy.eyebrow)}</p>
-  <h1>${esc(copy.h1)}</h1>
-  <p class="sub">${esc(copy.sub)}</p>
-  <div class="cta"><a class="btn btn-pri btn-lg">${esc(copy.cta[0])}</a><a class="btn btn-sec btn-lg">${esc(copy.cta[1])}</a></div>
-  <p class="fine">${esc(fine)}</p>
-  ${editorial ? editorialHero : appMock}
-</div></section>
-
-<section class="logos"><div class="in"><p>Trusted by teams everywhere</p><div>${LOGOS.map((l) => `<span>${l}</span>`).join('')}</div></div></section>
-
-<section class="sec"><div class="in">
-  <p class="eyebrow">Features</p><h2>Everything you need, nothing you don’t</h2><p class="lede">A focused set of capabilities designed to help you get to the result faster.</p>
-  <div class="grid3">${feats.map(([h, p], i) => `<article class="card tint${i % 3 + 1}${T.tiles.length ? ' tile' + (i % T.tiles.length + 1) : ''}"><div class="ico" style="background:var(--${i % 6 === 0 ? 'pri' : 'a' + (i % 6)})"></div><h3>${h}</h3><p>${p}</p><a class="lnk">Learn more →</a></article>`).join('')}</div>
-</div></section>
-
-<section class="sec alt"><div class="in split">
-  <div><p class="eyebrow">How it works</p><h2>Start simple, scale when you’re ready</h2><p class="lede">Set up in minutes, invite your team and grow without rebuilding from scratch.</p>
-    <ul class="checks"><li>Guided setup and sensible defaults</li><li>Clear permissions for every role</li><li>Reports you can share in one click</li></ul><a class="btn btn-pri">${esc(copy.cta[0])}</a></div>
-  <div class="panel" aria-hidden="true"><div class="chart tall">${[30, 46, 40, 62, 55, 74, 68, 90, 82, 100].map((h, i) => `<span style="height:${h}%;background:${i % 2 ? 'var(--pri)' : 'var(--a1)'}"></span>`).join('')}</div><div class="legend"><span><i style="background:var(--pri)"></i>This year</span><span><i style="background:var(--a1)"></i>Last year</span></div></div>
-</div></section>
-
-<section class="stats${R.hasBand ? ' band' : ''}"><div class="in">${specs.map(([n, l]) => `<div><b>${n}</b><span>${l}</span></div>`).join('')}</div></section>
-
-<section class="sec"><div class="in"><figure class="quote"><blockquote>“It changed how our whole team works. We shipped in weeks what used to take months.”</blockquote><figcaption><span class="av"></span><div><b>Alex Morgan</b><small>Head of Product, Northwind</small></div></figcaption></figure></div></section>
-
-<section class="sec alt alt2"><div class="in"><p class="eyebrow center">${oneTime ? 'Configurations' : 'Pricing'}</p><h2 class="center">${oneTime ? 'Choose the one that fits you' : 'Simple plans that grow with you'}</h2>
-  <div class="grid3 tiers">${oneTime
-    ? priceTier('Essential', b.category === 'auto' ? '$189k' : '$799', ['Core specification', 'Standard finish', '2-year warranty'], false, 'Configure', '') + priceTier('Performance', b.category === 'auto' ? '$249k' : '$1,099', ['Upgraded performance', 'Premium materials', 'Extended warranty', 'Priority service'], true, 'Configure', '') + priceTier('Collector', b.category === 'auto' ? '$420k' : '$1,499', ['Limited edition', 'Bespoke options', 'Concierge support'], false, 'Configure', '')
-    : priceTier('Starter', '$0', ['Up to 3 projects', 'Community support', 'Basic reports'], false) + priceTier('Pro', '$24', ['Unlimited projects', 'Priority support', 'Advanced reports', 'Team permissions'], true) + priceTier('Business', '$79', ['Single sign-on', 'Audit log', 'Dedicated manager'], false)}</div>
-</div></section>
-
-<section class="sec"><div class="in narrow"><h2 class="center">Frequently asked questions</h2>
-  <div class="faq">${FAQ.map(([q, a], i) => `<details${i === 0 ? ' open' : ''}><summary>${q}</summary><p>${a}</p></details>`).join('')}</div>
-  <form class="sub-form" onsubmit="return false"><input type="email" placeholder="you@company.com" aria-label="Email"><a class="btn btn-pri">Subscribe</a></form>
-</div></section>
-
-<section class="band" style="background:${css(P2.cta, '#333')};color:${css(P2.oncta, '#fff')};--pri:${css(P2.cta, '#333')};--onpri:${css(P2.oncta, '#fff')}"><div class="in"><h2>Ready to get started with ${name}?</h2><p>Join thousands of people already using it every day.</p><div class="cta"><a class="btn btn-inv btn-lg">${esc(copy.cta[0])}</a><a class="btn btn-ghost btn-lg">${esc(copy.cta[1])}</a></div></div></section>
-
-<footer class="foot"><div class="in">
-  <div class="fcols"><div><b class="logo">${name}</b><p>Sample footer for a page built from the ${name} design tokens.</p></div>
-  ${[['Product', ['Overview', 'Pricing', 'Changelog']], ['Company', ['About', 'Careers', 'Press']], ['Resources', ['Docs', 'Help center', 'Contact']]].map(([h, l]) => `<div><h5>${h}</h5>${l.map((x) => `<a>${x}</a>`).join('')}</div>`).join('')}</div>
-  <p class="legal">© 2026 ${name} (sample). Not affiliated with, or endorsed by, the brand shown. A generic sample page that applies this brand's colors, type and radii from its DESIGN.md — it is not a copy of the real site.</p>
-</div></footer>
+<div id="app">${renderLayout('hero', M)}</div>
+<script type="application/json" id="model">${modelJson}</script>
+<script type="module">
+import { renderLayout, activate, LAYOUT_KEYS } from '../../assets/layouts.js?v=${lv}';
+const M = JSON.parse(document.getElementById('model').textContent);
+const app = document.getElementById('app');
+const k = new URLSearchParams(location.search).get('layout');
+if (k && k !== 'hero' && LAYOUT_KEYS.includes(k)) app.innerHTML = renderLayout(k, M);
+activate(app);
+</script>
 </body></html>`;
 }

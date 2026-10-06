@@ -38,6 +38,27 @@
   }
 
 
+  // brand page: switch the preview layout (14 structures) without reloading the brand page
+  var lbtns = document.querySelectorAll('.layout-bar [data-layout]');
+  if (pv && lbtns.length) {
+    var base = pv.getAttribute('src').split('?')[0], open = document.getElementById('pvOpen'), ld = document.getElementById('layoutDesc');
+    Array.prototype.forEach.call(lbtns, function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-layout'), url = base + (k === 'hero' ? '' : '?layout=' + k);
+        pv.setAttribute('src', url); if (open) open.setAttribute('href', url);
+        if (ld) ld.firstChild.textContent = b.getAttribute('data-desc') + ' ';
+        Array.prototype.forEach.call(lbtns, function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
+      });
+    });
+  }
+  // patterns gallery: choose which brand the 14 preview links use
+  var pb = document.getElementById('patBrand');
+  if (pb) {
+    var links = document.querySelectorAll('[data-pat]');
+    var upd = function () { Array.prototype.forEach.call(links, function (a) { var k = a.getAttribute('data-pat'); a.setAttribute('href', '../p/' + pb.value + '/' + (k === 'hero' ? '' : '?layout=' + k)); }); };
+    pb.addEventListener('change', upd); upd();
+  }
+
   // brand page: tabs (without JS every panel stays visible)
   var tabs = document.getElementById('tabs');
   if (tabs) {

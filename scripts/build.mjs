@@ -8,6 +8,7 @@ import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
 import { renderLanding, fontFor } from './lib/landing.mjs';
+import { LAYOUTS, WIRE } from '../src/layouts.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT = join(ROOT, 'content');
@@ -22,7 +23,7 @@ const FONTK = { serif: 'หัวข้อฟอนต์ serif', mono: 'ฟอ�
 
 // content-hash version for static assets, so a long browser cache can never serve a stale file
 const ver = (f) => createHash('sha1').update(readFileSync(join(ROOT, 'src', f))).digest('hex').slice(0, 8);
-const V = { css: ver('style.css'), js: ver('app.js'), preview: ver('preview.css') };
+const V = { css: ver('style.css'), js: ver('app.js'), preview: ver('preview.css'), layouts: ver('layouts.mjs') };
 
 const NAMES = {
   'linear.app': 'Linear', 'mistral.ai': 'Mistral AI', 'together.ai': 'Together AI', 'opencode.ai': 'OpenCode', 'x.ai': 'xAI',
@@ -119,7 +120,7 @@ const PAGE = (title, content, { desc = SITE.description, depth = 0, path = '' } 
 <a class="skip" href="#main">ข้ามไปเนื้อหา</a>
 <header class="top"><div class="wrap bar">
   <a class="logo" href="${base || './'}"><span class="mark"></span>${esc(SITE.title)}</a>
-  <nav><a href="${base || './'}#brands">แบรนด์ทั้งหมด</a><a href="${base}about/">วิธีใช้</a><a href="${esc(SITE.upstream)}" target="_blank" rel="noopener noreferrer">ต้นทางข้อมูล ↗</a></nav>
+  <nav><a href="${base || './'}#brands">แบรนด์ทั้งหมด</a><a href="${base}patterns/">รูปแบบเลย์เอาต์</a><a href="${base}about/">วิธีใช้</a><a href="${esc(SITE.upstream)}" target="_blank" rel="noopener noreferrer">ต้นทางข้อมูล ↗</a></nav>
 </div></header>
 <main id="main">${content}</main>
 <footer class="foot"><div class="wrap">
@@ -206,6 +207,20 @@ ${t.extra}
 4. รองรับมือถือ และใช้ HTML ที่เข้าถึงได้ง่าย (semantic tags, คอนทราสต์ผ่านเกณฑ์)
 5. ใช้ Tailwind CSS (หรือ CSS ธรรมดา) แล้วสรุปสั้นๆ ว่าตัดสินใจเรื่องดีไซน์อะไรไปบ้าง`;
 
+function listAfter(body, startRe, stopAtBlank = false) {
+  const lines = body.split('\n'); const out = [];
+  const i = lines.findIndex((l) => startRe.test(l)); if (i < 0) return out;
+  for (let j = i + 1; j < lines.length; j++) {
+    if (/^#{1,6}\s/.test(lines[j])) break;
+    const m = lines[j].match(/^\s*[-*]\s+(.*)$/);
+    if (m) out.push(m[1]);
+    else if (lines[j].trim() && out.length && !/^\s{2,}/.test(lines[j])) break;
+  }
+  return out;
+}
+const refText = (x) => x.replace(/\{([a-z0-9.\-]+)\}/gi, '$1');
+const mdList = (items) => renderMarkdown(items.map((x) => '- ' + refText(x)).join('\n'));
+
 function renderBrandPage(b, siblings) {
   const t = b.tokens;
   const theme = deriveTheme(t.colors, { dark: b.darkHint, forceNight: b.forceNight });
@@ -224,8 +239,10 @@ function renderBrandPage(b, siblings) {
   const previewUrl = `../../p/${esc(b.slug)}/`;
   const mockup = `<div class="device-bar" role="group" aria-label="ขนาดหน้าจอ">
       <button class="chip on" data-w="100%">เดสก์ท็อป</button><button class="chip" data-w="820px">แท็บเล็ต</button><button class="chip" data-w="390px">มือถือ</button>
-      <a class="btn sm" href="${previewUrl}" target="_blank" rel="noopener">เปิดเต็มหน้าจอ ↗</a>
+      <a class="btn sm" id="pvOpen" href="${previewUrl}" target="_blank" rel="noopener">เปิดเต็มหน้าจอ ↗</a>
     </div>
+    <div class="layout-bar" role="group" aria-label="รูปแบบเลย์เอาต์"><span class="flabel">เลย์เอาต์</span><div class="chips">${LAYOUTS.map((l) => `<button class="chip${l.key === 'hero' ? ' on' : ''}" data-layout="${l.key}" data-desc="${esc(l.desc)}" aria-pressed="${l.key === 'hero'}">${l.n}. ${esc(l.thai)}</button>`).join('')}</div></div>
+    <p class="layout-desc muted" id="layoutDesc">${esc(LAYOUTS.find((l) => l.key === 'hero').desc)} <a href="../../patterns/">ดูรูปแบบทั้ง 14 แบบ →</a></p>
     <div class="device-wrap"><iframe id="pv" class="device" src="${previewUrl}" title="ตัวอย่างการนำสีและฟอนต์ของ ${esc(b.name)} ไปใช้กับหน้าทั่วไป" loading="lazy"></iframe></div>`;
 
   const colorEntries = Object.entries(t.colors);
@@ -263,12 +280,17 @@ function renderBrandPage(b, siblings) {
     <div class="pgrid">${sortedPrompts.map((t) => { const rec = t.uses.some((u) => b.uses.includes(u)); const txt = promptText(b.name, t);
       return `<article class="pcard"><div class="phead"><h3>${esc(t.title)}</h3>${rec ? '<em class="rec">เหมาะกับสไตล์นี้</em>' : ''}</div><pre>${esc(txt)}</pre><button class="btn sm" data-copy="${esc(txt)}">คัดลอกคำสั่ง</button></article>`; }).join('')}</div>`;
 
+  const keyChars = listAfter(b.body, /key characteristics/i);
+  const dos = listAfter(b.body, /^#{2,4}\s*do(?:'s)?\s*$/i), donts = listAfter(b.body, /^#{2,4}\s*don'?t(?:'s)?\s*$/i);
+  const rulesHtml = [keyChars.length ? `<h3 class="rh">ลักษณะเด่นของสไตล์นี้ <small class="muted">(ข้อความต้นฉบับภาษาอังกฤษจากเอกสาร)</small></h3>${mdList(keyChars)}` : '',
+    dos.length || donts.length ? `<div class="dd">${dos.length ? `<div class="dd-do"><h3 class="rh">✓ ควรทำ (Do)</h3>${mdList(dos)}</div>` : ''}${donts.length ? `<div class="dd-dont"><h3 class="rh">✕ ไม่ควรทำ (Don’t)</h3>${mdList(donts)}</div>` : ''}</div>` : ''].join('');
   const tabDefs = [
     { id: 'colors', label: 'สี', count: colorEntries.length, html: `<p class="muted">คลิกที่สีเพื่อคัดลอกค่า · <strong>หน้าตัวอย่างนำไปใช้ ${usedCount} จาก ${colorEntries.length} สี</strong> (สีที่ค่าเดียวกันนับว่าใช้ร่วมกัน) แต่ละสีบอกว่าถูกใช้ตรงไหน สีที่ “ไม่ได้ใช้ในตัวอย่าง” ยังมีอยู่ในไฟล์ DESIGN.md และ tokens.css</p>${palette}` },
     { id: 'ai', label: 'คำสั่งให้ AI', count: 0, html: aiHtml },
     typo && { id: 'type', label: 'ตัวอักษร', count: tyEntries.length, html: typo },
     shapes && { id: 'shapes', label: 'รูปทรงและระยะห่าง', count: 0, html: shapes },
     compHtml && { id: 'comps', label: 'คอมโพเนนต์', count: comps.length, html: compHtml },
+    rulesHtml.trim() && { id: 'rules', label: 'ลักษณะเด่นและกฎ', count: keyChars.length + dos.length + donts.length, html: `<div class="prose rules">${rulesHtml}</div>` },
     { id: 'doc', label: 'เอกสารฉบับเต็ม', count: 0, html: `<article class="prose doc-prose">${renderMarkdown(b.body)}</article>` }
   ].filter(Boolean);
 
@@ -307,6 +329,7 @@ function main() {
   copyFileSync(join(ROOT, 'src', 'style.css'), join(OUT, 'assets', 'style.css'));
   copyFileSync(join(ROOT, 'src', 'app.js'), join(OUT, 'assets', 'app.js'));
   copyFileSync(join(ROOT, 'src', 'preview.css'), join(OUT, 'assets', 'preview.css'));
+  copyFileSync(join(ROOT, 'src', 'layouts.mjs'), join(OUT, 'assets', 'layouts.js'));
 
   const slugs = readdirSync(CONTENT).filter((d) => statSync(join(CONTENT, d)).isDirectory() && existsSync(join(CONTENT, d, 'DESIGN.md'))).sort();
   const brands = [];
@@ -322,7 +345,7 @@ function main() {
 
   for (const b of brands) {
     const dir = join(OUT, 'b', b.slug); mkdirSync(dir, { recursive: true });
-    const lctx = { v: V.preview };
+    const lctx = { v: V.preview, vLayouts: V.layouts };
     const pd = join(OUT, 'p', b.slug); mkdirSync(pd, { recursive: true });
     writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight }), lctx));
     b.usage = lctx.usage || [];
@@ -378,9 +401,19 @@ function main() {
     <h2>ข้อควรรู้</h2><ul><li>ไฟล์เหล่านี้เป็นการ “วิเคราะห์เชิงแรงบันดาลใจ” จากเว็บไซต์จริง ใช้เพื่อการเรียนรู้ ไม่ใช่ไฟล์ทางการของแบรนด์</li><li>หน้าตัวอย่างบนเว็บนี้เป็นหน้าทั่วไปที่นำสี ตัวอักษร และมุมโค้งของแบรนด์มาใส่ <strong>ไม่ใช่การจำลองเว็บจริงของแบรนด์นั้น</strong></li><li>ไม่ควรใช้โลโก้ ชื่อ หรือทำให้ผลงานของคุณดูเหมือนเป็นเว็บของแบรนด์นั้น</li><li>ฟอนต์บางตัวเป็นของเสียเงิน หน้าตัวอย่างจึงใช้ Inter แทน</li></ul>
     <h2>เกี่ยวกับโครงการ</h2><p>${esc(SITE.disclaimer)}</p></section>`, { depth: 1 }));
 
+  // patterns gallery
+  mkdirSync(join(OUT, 'patterns'), { recursive: true });
+  const brandOpts = brands.map((x) => `<option value="${esc(x.slug)}"${x.slug === 'stripe' ? ' selected' : ''}>${esc(x.name)}</option>`).join('');
+  const groups = [...new Set(LAYOUTS.map((l) => l.group))];
+  const patternCards = LAYOUTS.map((l) => `<article class="pat" data-group="${esc(l.group)}"><div class="wire" aria-hidden="true">${WIRE[l.key] || ''}</div><div class="pat-body"><small class="pat-n">แบบที่ ${l.n} · ${esc(l.group)}</small><h3>${esc(l.th)} <span>${esc(l.thai)}</span></h3><p>${esc(l.desc)}</p><div class="tags">${l.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div><a class="btn primary sm" data-pat="${l.key}" href="../p/stripe/${l.key === 'hero' ? '' : '?layout=' + l.key}" target="_blank" rel="noopener">ดูตัวอย่างกับแบรนด์ที่เลือก ↗</a></div></article>`).join('');
+  writeFileSync(join(OUT, 'patterns', 'index.html'), PAGE(`รูปแบบเลย์เอาต์ — ${SITE.title}`, `<section class="hero"><div class="wrap"><p class="eyebrow">โครงหน้าเว็บ 14 แบบ</p><h1>รูปแบบเลย์เอาต์</h1><p class="lead">เลือก “โครงหน้า” ที่เหมาะกับงานของคุณ แล้วดูว่าเมื่อใส่สไตล์ของแบรนด์ใดแบรนด์หนึ่งลงไป จะได้หน้าตาแบบไหน ทุกแบบใช้สี ตัวอักษร มุมโค้ง และคอมโพเนนต์จาก DESIGN.md ของแบรนด์ที่คุณเลือก</p>
+    <div class="pat-pick"><label for="patBrand"><b>เลือกแบรนด์สำหรับดูตัวอย่าง</b></label><select id="patBrand">${brandOpts}</select></div></div></section>
+    <section class="wrap pat-wrap"><div class="pat-grid">${patternCards}</div>
+    <p class="muted pat-credit">ชื่อและการจัดหมวด 14 โครงหน้าอ้างอิงจากคอลเลกชัน <a href="https://html-layout-patterns.netlify.app/" target="_blank" rel="noopener noreferrer">HTML Layout Patterns</a> ที่ผู้จัดทำเว็บนี้รวบรวมไว้ เทมเพลตหน้าตัวอย่างในเว็บนี้เขียนขึ้นใหม่ทั้งหมด หากต้องการพิมพ์เขียวและทฤษฎีเชิงลึกของแต่ละโครงหน้า ดูได้ที่คอลเลกชันนั้น</p></section>`, { depth: 1 }));
+
   writeFileSync(join(OUT, 'brands.json'), JSON.stringify(brands.map((b) => ({ slug: b.slug, name: b.name, category: b.category, format: b.format, colors: Object.keys(b.tokens.colors).length })), null, 2));
   writeFileSync(join(OUT, '404.html'), PAGE('ไม่พบหน้านี้', '<section class="wrap content narrow"><h1>ไม่พบหน้านี้</h1><p><a href="/">กลับหน้าแรก</a></p></section>'));
-  const sm = ['/', '/about/', ...brands.map((b) => `/b/${b.slug}/`)];
+  const sm = ['/', '/about/', '/patterns/', ...brands.map((b) => `/b/${b.slug}/`)];
   writeFileSync(join(OUT, 'sitemap.txt'), sm.map((p) => (SITE.url || '') + p).join('\n') + '\n');
 
   const legacy = brands.filter((b) => b.format === 'legacy').map((b) => b.slug);
