@@ -142,7 +142,7 @@ export function renderLanding(b, theme, ctx) {
 <html lang="en" style="${vars}">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${name} — sample page from DESIGN.md</title>
+<title>${name} — generic sample using its design tokens</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
@@ -150,7 +150,7 @@ export function renderLanding(b, theme, ctx) {
 <script>if (top !== self) document.documentElement.classList.add('framed');</script>
 </head>
 <body class="${theme.dark ? 'is-dark' : ''}">
-<div class="ribbon"><a href="../../b/${esc(b.slug)}/">← กลับไปหน้า ${name}</a><span>หน้าตัวอย่างจาก DESIGN.md · ข้อความเป็นตัวอย่าง</span></div>
+<div class="ribbon"><a href="../../b/${esc(b.slug)}/">← กลับไปหน้า ${name}</a><span>หน้าทั่วไปที่ใส่สี/ฟอนต์/มุมโค้งจาก DESIGN.md · ไม่ใช่หน้าจริงของแบรนด์</span></div>
 <div class="announce"><span class="pill">${esc(copy.eyebrow)}</span> See what’s new in ${name} →</div>
 <header class="nav"><div class="in">
   <b class="logo">${name}</b>
@@ -200,7 +200,7 @@ export function renderLanding(b, theme, ctx) {
 <footer class="foot"><div class="in">
   <div class="fcols"><div><b class="logo">${name}</b><p>Sample footer for a page built from the ${name} design tokens.</p></div>
   ${[['Product', ['Overview', 'Pricing', 'Changelog']], ['Company', ['About', 'Careers', 'Press']], ['Resources', ['Docs', 'Help center', 'Contact']]].map(([h, l]) => `<div><h5>${h}</h5>${l.map((x) => `<a>${x}</a>`).join('')}</div>`).join('')}</div>
-  <p class="legal">© 2026 ${name} (sample). Not affiliated with, or endorsed by, the brand shown. Generated for learning from a DESIGN.md file.</p>
+  <p class="legal">© 2026 ${name} (sample). Not affiliated with, or endorsed by, the brand shown. A generic sample page that applies this brand's colors, type and radii from its DESIGN.md — it is not a copy of the real site.</p>
 </div></footer>
 </body></html>`;
 }

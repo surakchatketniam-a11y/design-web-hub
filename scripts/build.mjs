@@ -185,7 +185,7 @@ function renderBrandPage(b, siblings) {
       <button class="chip on" data-w="100%">เดสก์ท็อป</button><button class="chip" data-w="820px">แท็บเล็ต</button><button class="chip" data-w="390px">มือถือ</button>
       <a class="btn sm" href="${previewUrl}" target="_blank" rel="noopener">เปิดเต็มหน้าจอ ↗</a>
     </div>
-    <div class="device-wrap"><iframe id="pv" class="device" src="${previewUrl}" title="ตัวอย่างหน้าเว็บสไตล์ ${esc(b.name)}" loading="lazy"></iframe></div>`;
+    <div class="device-wrap"><iframe id="pv" class="device" src="${previewUrl}" title="ตัวอย่างการนำสีและฟอนต์ของ ${esc(b.name)} ไปใช้กับหน้าทั่วไป" loading="lazy"></iframe></div>`;
 
   const colorEntries = Object.entries(t.colors);
   const palette = colorEntries.length ? `<div class="palette">${colorEntries.map(([k, v]) => {
@@ -232,7 +232,7 @@ function renderBrandPage(b, siblings) {
     ${b.format === 'legacy' ? '<p class="note">ไฟล์นี้เป็นรูปแบบเอกสารเก่า (ไม่มี token แบบ YAML) หน้านี้จึงแสดงสีที่ดึงจากข้อความเท่าที่อ่านได้</p>' : ''}
   </div></section>
   <div class="wrap content">
-    <section><h2>ตัวอย่างหน้าเว็บ</h2><p class="muted">หน้า landing page เต็มรูปแบบที่สร้างจากสี ตัวอักษร รัศมีมุม และคอมโพเนนต์ใน DESIGN.md — ข้อความเป็นตัวอย่าง และฟอนต์เสียเงินของแบรนด์แสดงด้วยฟอนต์ใกล้เคียงแทน ลองสลับขนาดหน้าจอด้านล่าง</p>${mockup}</section>
+    <section><h2>ตัวอย่างการนำดีไซน์ไปใช้</h2><p class="muted"><strong>ไม่ใช่การจำลองหน้าเว็บจริงของ ${esc(b.name)}</strong> — เป็นหน้า landing page ทั่วไป (โครงเลย์เอาต์และข้อความเราเขียนเอง) ที่นำ <em>สี ตัวอักษร รัศมีมุม และ padding ปุ่ม</em> จาก DESIGN.md มาใส่ เพื่อให้เห็นความรู้สึกโดยรวมของดีไซน์นี้ ส่วนที่เป็นเอกลักษณ์เฉพาะแบรนด์ เช่น ภาพ จังหวะการจัดวาง และเอฟเฟกต์ ยังไม่ได้ถูกนำมาแสดง ฟอนต์เสียเงินแสดงด้วยฟอนต์ใกล้เคียงแทน</p>${mockup}</section>
     <div class="tabs-wrap" id="tabs">
       <div class="tabbar" role="tablist" aria-label="รายละเอียดดีไซน์">${tabDefs.map((d, i) => `<button role="tab" id="tab-${d.id}" aria-controls="panel-${d.id}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" class="tabbtn">${d.label}${d.count ? ` <span class="count">${d.count}</span>` : ''}</button>`).join('')}</div>
       ${tabDefs.map((d) => `<section class="tp" role="tabpanel" id="panel-${d.id}" aria-labelledby="tab-${d.id}"><h2 class="tp-h">${d.label}</h2>${d.html}</section>`).join('')}
@@ -301,7 +301,7 @@ function main() {
   writeFileSync(join(OUT, 'about', 'index.html'), PAGE(`วิธีใช้ — ${SITE.title}`, `<section class="wrap content narrow"><h1>วิธีใช้</h1>
     <h2>DESIGN.md คืออะไร</h2><p>ไฟล์ markdown ธรรมดาที่บรรยายระบบดีไซน์ของเว็บ (สี ตัวอักษร ระยะห่าง คอมโพเนนต์ กฎการใช้งาน) เพื่อให้ AI ที่ช่วยเขียนโค้ดอ่านแล้วสร้าง UI ที่หน้าตาสอดคล้องกัน</p>
     <h2>ใช้งาน 3 ขั้น</h2><ol><li>เลือกแบรนด์จากหน้าแรกและดูตัวอย่าง</li><li>กด “ดาวน์โหลด DESIGN.md” แล้ววางไว้ที่รากโปรเจกต์ของคุณ</li><li>สั่ง AI เช่น “อ่าน DESIGN.md แล้วสร้างหน้า landing page ตามสไตล์นี้”</li></ol>
-    <h2>ข้อควรรู้</h2><ul><li>ไฟล์เหล่านี้เป็นการ “วิเคราะห์เชิงแรงบันดาลใจ” จากเว็บไซต์จริง ใช้เพื่อการเรียนรู้ ไม่ใช่ไฟล์ทางการของแบรนด์</li><li>ไม่ควรใช้โลโก้ ชื่อ หรือทำให้ผลงานของคุณดูเหมือนเป็นเว็บของแบรนด์นั้น</li><li>ฟอนต์บางตัวเป็นของเสียเงิน หน้าตัวอย่างจึงใช้ Inter แทน</li></ul>
+    <h2>ข้อควรรู้</h2><ul><li>ไฟล์เหล่านี้เป็นการ “วิเคราะห์เชิงแรงบันดาลใจ” จากเว็บไซต์จริง ใช้เพื่อการเรียนรู้ ไม่ใช่ไฟล์ทางการของแบรนด์</li><li>หน้าตัวอย่างบนเว็บนี้เป็นหน้าทั่วไปที่นำสี ตัวอักษร และมุมโค้งของแบรนด์มาใส่ <strong>ไม่ใช่การจำลองเว็บจริงของแบรนด์นั้น</strong></li><li>ไม่ควรใช้โลโก้ ชื่อ หรือทำให้ผลงานของคุณดูเหมือนเป็นเว็บของแบรนด์นั้น</li><li>ฟอนต์บางตัวเป็นของเสียเงิน หน้าตัวอย่างจึงใช้ Inter แทน</li></ul>
     <h2>เกี่ยวกับโครงการ</h2><p>${esc(SITE.disclaimer)}</p></section>`, { depth: 1 }));
 
   writeFileSync(join(OUT, 'brands.json'), JSON.stringify(brands.map((b) => ({ slug: b.slug, name: b.name, category: b.category, format: b.format, colors: Object.keys(b.tokens.colors).length })), null, 2));
