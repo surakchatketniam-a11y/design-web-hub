@@ -142,6 +142,49 @@ function buildPalette(colors, theme, o) {
   return { vars, usage, hasBand: !!band1 };
 }
 
+/** Read the "feel" signals a DESIGN.md states in words/tokens (not just colors): casing, gradients, flatness, color-block cards, mono labels, photo-led hero, spacing. */
+function detectFeel(b, theme, o) {
+  const t = b.tokens;
+  const doc = (b.description + ' ' + b.body.slice(0, 6000)).toLowerCase();
+  const tyList = Object.entries(t.typography).filter(([, v]) => v && typeof v === 'object');
+  const disp = [...tyList].sort((a, c) => num(c[1].fontSize, 0) - num(a[1].fontSize, 0))[0]?.[1];
+  const kcRaw = (b.body.match(/key characteristics:?\*{0,2}\s*\n([\s\S]{0,2400})/i) || [])[1] || doc.slice(0, 2400);
+  const kc = kcRaw.toLowerCase();
+
+  // sentence-level: a sentence must tie UPPERCASE to headings, and not be about labels/buttons or be negated
+  const upperSentence = doc.split(/[.\n;]/).some((x) => /(uppercase|all-caps|all caps)/.test(x) && /(display|headline|heading|hero|title)/.test(x) && !/(mono|eyebrow|caption|label|button|nav|tab|badge|tag|chip|sub-head|sentence-case)/.test(x) && !/\b(no|never|not|without|avoid)\b|rather than/.test(x));
+  const upper = disp?.textTransform === 'uppercase' || upperSentence;
+  const gradient = /(gradient[- ]mesh|mesh gradient|atmospheric (gradient|wash|orbs)|sunset gradient|aurora|gradient (wash|hero|backdrop|orbs?|spotlight)|(hero|backdrop|atmospher\w*)[^.\n]{0,40}gradient)/.test(doc) && !/(no|zero|never|without)[^.\n]{0,20}gradient/.test(doc);
+  const flat = /(no shadows?|zero shadows?|flat|never.{0,20}shadow|resists drop shadows?|without shadows?|no drop shadows?|shadow-free)/.test(doc) || theme.dark;
+
+  const solid = Object.entries(t.colors).map(([name, value]) => ({ name, value, c: parseColor(value) })).filter((x) => x.c && x.c.a >= 0.99);
+  const tileNames = solid.filter((x) => /^(signature|block|card-tint|tile|brand-(pink|teal|lavender|peach|ochre|mint|yellow|coral|orange|green|blue|red|purple)|pastel|product-)/.test(x.name));
+  const bgC = parseColor(theme.bg);
+  const tilePick = [];
+  for (const x of tileNames) { if (dist(x.c, bgC) < 60) continue; if (tilePick.every((y) => dist(x.c, y.c) > 70)) tilePick.push(x); if (tilePick.length >= 3) break; }
+  const tiles = tileNames.length >= 3 && tilePick.length >= 2 ? tilePick : [];
+
+  const monoTok = tyList.find(([k, v]) => /mono/.test(k + ' ' + (v.fontFamily || '')) && /eyebrow|caps|label|caption/.test(k));
+  const photoLed = /(photograph(y|ic)|cinematic|full-bleed (photo|video|imagery)|campaign imagery)/.test(kc);
+  const productUi = /(product (ui|screenshot|mockup)|dashboard|terminal|code (editor|window|well)|screenshots?|mockups?)/.test(kc);
+  const catEditorial = ['auto', 'consumer', 'hardware'].includes(b.category);
+  const editorial = photoLed && !productUi ? true : productUi && !photoLed ? false : catEditorial;
+
+  const sp = Object.entries(t.spacing).find(([k]) => k === 'section')?.[1];
+  const secPad = Number.isFinite(parseFloat(sp)) ? Math.max(56, Math.min(128, parseFloat(sp))) : 88;
+
+  const traits = [];
+  if (upper) traits.push('หัวข้อตัวพิมพ์ใหญ่');
+  if (gradient) traits.push('พื้นหลัง gradient บรรยากาศ');
+  traits.push(flat ? 'แบนราบ ไม่เน้นเงา' : 'เงานุ่มบางๆ ใต้การ์ด');
+  if (tiles.length) traits.push('การ์ดสีบล็อกประจำแบรนด์');
+  if (monoTok) traits.push('ป้ายกำกับฟอนต์ monospace');
+  if (editorial) traits.push(photoLed ? 'ภาพนำแบบภาพถ่าย/แคมเปญ' : 'ภาพนำแบบ editorial');
+  if (secPad >= 96) traits.push('จังหวะโปร่ง ระยะห่างกว้าง');
+  const classes = [upper && 'tone-upper', gradient && 'tone-grad', flat ? 'tone-flat' : 'tone-soft', tiles.length && 'tone-tiles', monoTok && 'tone-mono'].filter(Boolean).join(' ');
+  return { upper, gradient, flat, tiles, monoTok: monoTok ? monoTok[1] : null, editorial, secPad, traits, classes };
+}
+
 export function renderLanding(b, theme, ctx) {
   const t = b.tokens, get = (v) => resolveRef(v, t);
   const copy = COPY[b.category] || COPY.other;
@@ -171,6 +214,9 @@ export function renderLanding(b, theme, ctx) {
   const R = buildPalette(t.colors, theme, { priBg, priFg, secFg });
   if (ctx) ctx.usage = R.usage;
   const P2 = R.vars;
+  const T = detectFeel(b, theme, { priBg });
+  if (ctx) ctx.traits = T.traits;
+  if (ctx) T.tiles.forEach((x) => ctx.usage.push(['การ์ดสีบล็อกประจำแบรนด์', x.value]));
   const inv = theme.dark ? theme.ink : theme.ink; // inverse block = ink on bg
   const onInv = theme.bg;
   const fd = fontFor(display?.fontFamily), fb = fontFor(body?.fontFamily || display?.fontFamily);
@@ -178,6 +224,7 @@ export function renderLanding(b, theme, ctx) {
     `--bg:${css(theme.bg, '#fff')}`, `--ink:${css(theme.ink, '#111')}`, `--mute:${css(theme.mute, '#666')}`, `--pri:${css(priBg, '#333')}`, `--onpri:${css(priFg, '#fff')}`,
     `--sur:${css(theme.surface, '#f5f5f5')}`, `--bd:${css(theme.border, '#ddd')}`, `--inv:${css(inv, '#111')}`, `--oninv:${css(onInv, '#fff')}`,
     ...Object.entries(P2).map(([k, v]) => `--${k}:${css(v, '#999')}`),
+    ...T.tiles.flatMap((x, i) => [`--tile${i + 1}:${css(x.value, '#ccc')}`, `--ontile${i + 1}:${readableOn(x.c)}`]), `--sec-pad:${T.secPad}px`, `--fe:${fontFor(T.monoTok?.fontFamily || display?.fontFamily)}`,
     `--feat-bg:${css(R.hasBand ? P2.band1 : inv, '#111')}`, `--feat-fg:${css(R.hasBand ? P2.onband1 : onInv, '#fff')}`,
     `--r-btn:${radBtn}`, `--r-card:${radCard}`, `--r-in:${radIn}`, `--pad-btn:${padBtn}`,
     `--sec-bg:${secBg}`, `--sec-fg:${secFg}`, `--fd:${fd}`, `--fb:${fb}`,
@@ -187,7 +234,7 @@ export function renderLanding(b, theme, ctx) {
     tvars('btn', btnTy || body, { size: 15, weight: 500, lh: 1.2 })
   ].join(';');
 
-  const editorial = ['auto', 'consumer', 'hardware'].includes(b.category);
+  const editorial = T.editorial;
   const oneTime = b.category === 'auto' || b.category === 'hardware';
   const feats = FEATURES_BY[b.category] || FEATURES;
   const fine = FINE[b.category] || 'No credit card required · Free plan available';
@@ -214,7 +261,7 @@ export function renderLanding(b, theme, ctx) {
   const priceTier = (title, price, items, featured, cta = 'Choose plan', per = '/mo') => `<div class="tier${featured ? ' feat' : ''}">${featured ? '<em class="pill">Most popular</em>' : ''}<h3>${title}</h3><div class="price">${price}${per ? `<small>${per}</small>` : ''}</div><ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul><a class="btn ${featured ? 'btn-inv' : 'btn-pri'}">${cta}</a></div>`;
 
   return `<!doctype html>
-<html lang="en" style="${vars}">
+<html lang="en" class="${T.classes}" style="${vars}">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${name} — generic sample using its design tokens</title>
@@ -246,7 +293,7 @@ export function renderLanding(b, theme, ctx) {
 
 <section class="sec"><div class="in">
   <p class="eyebrow">Features</p><h2>Everything you need, nothing you don’t</h2><p class="lede">A focused set of capabilities designed to help you get to the result faster.</p>
-  <div class="grid3">${feats.map(([h, p], i) => `<article class="card tint${i % 3 + 1}"><div class="ico" style="background:var(--${i % 6 === 0 ? 'pri' : 'a' + (i % 6)})"></div><h3>${h}</h3><p>${p}</p><a class="lnk">Learn more →</a></article>`).join('')}</div>
+  <div class="grid3">${feats.map(([h, p], i) => `<article class="card tint${i % 3 + 1}${T.tiles.length ? ' tile' + (i % T.tiles.length + 1) : ''}"><div class="ico" style="background:var(--${i % 6 === 0 ? 'pri' : 'a' + (i % 6)})"></div><h3>${h}</h3><p>${p}</p><a class="lnk">Learn more →</a></article>`).join('')}</div>
 </div></section>
 
 <section class="sec alt"><div class="in split">

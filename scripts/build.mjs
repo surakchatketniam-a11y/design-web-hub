@@ -289,7 +289,7 @@ function renderBrandPage(b, siblings) {
     ${b.format === 'legacy' ? '<p class="note">ไฟล์นี้เป็นรูปแบบเอกสารเก่า (ไม่มี token แบบ YAML) หน้านี้จึงแสดงสีที่ดึงจากข้อความเท่าที่อ่านได้</p>' : ''}
   </div></section>
   <div class="wrap content">
-    <section><h2>ตัวอย่างการนำดีไซน์ไปใช้</h2><p class="muted"><strong>ไม่ใช่การจำลองหน้าเว็บจริงของ ${esc(b.name)}</strong> — เป็นหน้า landing page ทั่วไป (โครงเลย์เอาต์และข้อความเราเขียนเอง) ที่นำ <em>สี ตัวอักษร รัศมีมุม และ padding ปุ่ม</em> จาก DESIGN.md มาใส่ เพื่อให้เห็นความรู้สึกโดยรวมของดีไซน์นี้ ส่วนที่เป็นเอกลักษณ์เฉพาะแบรนด์ เช่น ภาพ จังหวะการจัดวาง และเอฟเฟกต์ ยังไม่ได้ถูกนำมาแสดง ฟอนต์เสียเงินแสดงด้วยฟอนต์ใกล้เคียงแทน</p>${mockup}</section>
+    <section><h2>ตัวอย่างการนำดีไซน์ไปใช้</h2><p class="muted"><strong>ไม่ใช่การจำลองหน้าเว็บจริงของ ${esc(b.name)}</strong> — เป็นหน้า landing page ทั่วไป (โครงเลย์เอาต์และข้อความเราเขียนเอง) ที่นำ <em>สี ตัวอักษร รัศมีมุม และ padding ปุ่ม</em> จาก DESIGN.md มาใส่ เพื่อให้เห็นความรู้สึกโดยรวมของดีไซน์นี้ ส่วนที่เป็นเอกลักษณ์เฉพาะแบรนด์ เช่น ภาพ จังหวะการจัดวาง และเอฟเฟกต์ ยังไม่ได้ถูกนำมาแสดง ฟอนต์เสียเงินแสดงด้วยฟอนต์ใกล้เคียงแทน</p>${(b.traits || []).length ? `<p class="feel"><b>ลักษณะที่อ่านจากเอกสารและนำมาใช้ในตัวอย่าง:</b> ${b.traits.map((x) => `<span class="tag">${esc(x)}</span>`).join(' ')}</p>` : ''}${mockup}</section>
     <div class="tabs-wrap" id="tabs">
       <div class="tabbar" role="tablist" aria-label="รายละเอียดดีไซน์">${tabDefs.map((d, i) => `<button role="tab" id="tab-${d.id}" aria-controls="panel-${d.id}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" class="tabbtn">${d.label}${d.count ? ` <span class="count">${d.count}</span>` : ''}</button>`).join('')}</div>
       ${tabDefs.map((d) => `<section class="tp" role="tabpanel" id="panel-${d.id}" aria-labelledby="tab-${d.id}"><h2 class="tp-h">${d.label}</h2>${d.html}</section>`).join('')}
@@ -326,6 +326,7 @@ function main() {
     const pd = join(OUT, 'p', b.slug); mkdirSync(pd, { recursive: true });
     writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight }), lctx));
     b.usage = lctx.usage || [];
+    b.traits = lctx.traits || [];
     writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
     const dd = join(OUT, 'd', b.slug); mkdirSync(dd, { recursive: true });
     writeFileSync(join(dd, 'DESIGN.md'), b.raw);
