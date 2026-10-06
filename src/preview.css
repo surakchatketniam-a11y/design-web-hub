@@ -206,3 +206,24 @@ body:has(.sticky-bar) { padding-bottom: 76px; }
 /* readable secondary text on tinted/dark card surfaces */
 .card p, .post p, .widget p, .pc-body small, .m-cap small { color: color-mix(in srgb, var(--ink) 72%, var(--sur)); }
 .tone-tiles .card[class*="tile"] p { color: inherit; }
+
+/* mobile fixes for the dashboard layout: no horizontal overflow, nav becomes a scrollable top strip */
+.dash > * { min-width: 0; } .d-main { min-width: 0; } .d-top input { min-width: 0; }
+@media (max-width: 620px) {
+  .dash, .dash.collapsed { grid-template-columns: minmax(0, 1fr); }
+  .d-side, .dash.collapsed .d-side { display: block; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--bd); position: sticky; top: 0; z-index: 5; }
+  .d-brand, .dash.collapsed .d-brand { padding: 4px 0 8px; justify-content: space-between; } .dash.collapsed .d-brand .logo { display: inline; } .d-toggle { display: none; }
+  .d-side nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; } .d-side a, .dash.collapsed .d-side a span { flex: none; display: flex; } .dash.collapsed .d-side a span { display: inline; }
+  .d-top { padding: 12px 16px; } .d-top input { width: 100%; max-width: 62%; } .d-body { padding: 16px; } .d-kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+}
+
+/* mobile polish: breathing room under lead text, compact nav buttons for brands with large button padding */
+.sub { margin-bottom: 24px; }
+.ss-left .sub, .fh-copy .sub, .z-text .sub { margin-bottom: 26px; }
+@media (max-width: 620px) {
+  .nav .btn, .fh-nav .btn { padding: 8px 14px; font-size: 14px; } .nav .in { gap: 12px; }
+  .nav-cta { gap: 6px; }
+}
+
+/* article-style layouts: paragraph rhythm */
+.art p, .long p, .f-main p, .post p { margin: 0 0 1em; } .art .cv, .long .cv { margin: 4px 0 26px; } .art .byline { margin-bottom: 20px; } .long .sub { margin-bottom: 20px; }
