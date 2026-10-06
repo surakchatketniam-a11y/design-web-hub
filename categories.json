@@ -1,0 +1,9 @@
+{
+  "ai": { "label": "AI และโมเดล", "brands": ["claude", "cohere", "elevenlabs", "minimax", "mistral.ai", "ollama", "opencode.ai", "replicate", "runwayml", "together.ai", "voltagent", "x.ai", "lovable", "cursor"] },
+  "dev": { "label": "เครื่องมือนักพัฒนา", "brands": ["vercel", "supabase", "mongodb", "clickhouse", "hashicorp", "posthog", "sentry", "expo", "resend", "composio", "warp", "raycast", "mintlify", "sanity", "webflow", "framer"] },
+  "work": { "label": "แอปทำงานและทีม", "brands": ["linear.app", "notion", "airtable", "miro", "figma", "slack", "intercom", "clay", "superhuman", "zapier", "cal"] },
+  "finance": { "label": "การเงินและคริปโต", "brands": ["stripe", "revolut", "wise", "coinbase", "binance", "kraken", "mastercard", "shopify"] },
+  "auto": { "label": "ยานยนต์และอวกาศ", "brands": ["bmw", "bmw-m", "bugatti", "ferrari", "lamborghini", "renault", "tesla", "spacex"] },
+  "consumer": { "label": "ผู้บริโภคและสื่อ", "brands": ["airbnb", "uber", "nike", "starbucks", "pinterest", "spotify", "playstation", "nintendo-2001", "theverge", "wired", "vodafone"] },
+  "hardware": { "label": "ฮาร์ดแวร์และองค์กรเทค", "brands": ["apple", "meta", "ibm", "hp", "dell-1996", "nvidia"] }
+}
