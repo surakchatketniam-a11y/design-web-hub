@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
-import { renderLanding, fontFor } from './lib/landing.mjs';
+import { renderLanding, fontFor, categoryModel } from './lib/landing.mjs';
 import { LAYOUTS, WIRE } from '../src/layouts.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -23,7 +23,7 @@ const FONTK = { serif: 'หัวข้อฟอนต์ serif', mono: 'ฟอ�
 
 // content-hash version for static assets, so a long browser cache can never serve a stale file
 const ver = (f) => createHash('sha1').update(readFileSync(join(ROOT, 'src', f))).digest('hex').slice(0, 8);
-const V = { css: ver('style.css'), js: ver('app.js'), preview: ver('preview.css'), layouts: ver('layouts.mjs') };
+const V = { css: ver('style.css'), js: ver('app.js'), preview: ver('preview.css'), layouts: ver('layouts.mjs'), mix: ver('mix.js') };
 
 const NAMES = {
   'linear.app': 'Linear', 'mistral.ai': 'Mistral AI', 'together.ai': 'Together AI', 'opencode.ai': 'OpenCode', 'x.ai': 'xAI',
@@ -120,7 +120,7 @@ const PAGE = (title, content, { desc = SITE.description, depth = 0, path = '' } 
 <a class="skip" href="#main">ข้ามไปเนื้อหา</a>
 <header class="top"><div class="wrap bar">
   <a class="logo" href="${base || './'}"><span class="mark"></span>${esc(SITE.title)}</a>
-  <nav><a href="${base || './'}#brands">แบรนด์ทั้งหมด</a><a href="${base}patterns/">รูปแบบเลย์เอาต์</a><a href="${base}about/">วิธีใช้</a><a href="${esc(SITE.upstream)}" target="_blank" rel="noopener noreferrer">ต้นทางข้อมูล ↗</a></nav>
+  <nav><a class="nl-brands" href="${base || './'}#brands">แบรนด์ทั้งหมด</a><a class="nl-patterns" href="${base}patterns/">รูปแบบเลย์เอาต์</a><a class="nl-mix" href="${base}mix/">ผสมสไตล์</a><a class="nl-about" href="${base}about/">วิธีใช้</a><a class="nl-up" href="${esc(SITE.upstream)}" target="_blank" rel="noopener noreferrer">ต้นทางข้อมูล ↗</a></nav>
 </div></header>
 <main id="main">${content}</main>
 <footer class="foot"><div class="wrap">
@@ -306,6 +306,7 @@ function renderBrandPage(b, siblings) {
       <button class="btn" data-fetchcopy="../../d/${esc(b.slug)}/DESIGN.md">คัดลอกเนื้อหา</button>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.css" download="${esc(b.slug)}-tokens.css">tokens.css</a>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.json" download="${esc(b.slug)}-tokens.json">tokens.json</a>
+      <a class="btn" href="../../mix/?c=${esc(b.slug)}&t=${esc(b.slug)}&s=${esc(b.slug)}&f=${esc(b.slug)}">ใช้เป็นฐานผสมสไตล์ →</a>
     </div>
     <div class="prompt"><span class="muted">วางไฟล์ที่รากโปรเจกต์แล้วสั่ง AI:</span><code id="prompt">${esc(prompt)}</code><button class="btn sm" data-copy="${esc(prompt)}">คัดลอก</button></div>
     ${b.format === 'legacy' ? '<p class="note">ไฟล์นี้เป็นรูปแบบเอกสารเก่า (ไม่มี token แบบ YAML) หน้านี้จึงแสดงสีที่ดึงจากข้อความเท่าที่อ่านได้</p>' : ''}
@@ -330,6 +331,7 @@ function main() {
   copyFileSync(join(ROOT, 'src', 'app.js'), join(OUT, 'assets', 'app.js'));
   copyFileSync(join(ROOT, 'src', 'preview.css'), join(OUT, 'assets', 'preview.css'));
   copyFileSync(join(ROOT, 'src', 'layouts.mjs'), join(OUT, 'assets', 'layouts.js'));
+  copyFileSync(join(ROOT, 'src', 'mix.js'), join(OUT, 'assets', 'mix.js'));
 
   const slugs = readdirSync(CONTENT).filter((d) => statSync(join(CONTENT, d)).isDirectory() && existsSync(join(CONTENT, d, 'DESIGN.md'))).sort();
   const brands = [];
@@ -343,6 +345,7 @@ function main() {
     } catch (e) { problems.push(`${s}: อ่านไฟล์ไม่สำเร็จ (${e.message})`); }
   }
 
+  const mixBrands = [];
   for (const b of brands) {
     const dir = join(OUT, 'b', b.slug); mkdirSync(dir, { recursive: true });
     const lctx = { v: V.preview, vLayouts: V.layouts };
@@ -350,6 +353,7 @@ function main() {
     writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight }), lctx));
     b.usage = lctx.usage || [];
     b.traits = lctx.traits || [];
+    mixBrands.push({ slug: b.slug, name: b.name, vars: Object.fromEntries((lctx.vars || '').split(';').filter(Boolean).map((p) => { const i = p.indexOf(':'); return [p.slice(2, i), p.slice(i + 1)]; })), classes: (lctx.classes || '').split(' ').filter(Boolean), hasBand: !!lctx.hasBand, tileCount: lctx.tileCount || 0, dark: !!lctx.dark, fonts: lctx.fonts || {} });
     writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
     const dd = join(OUT, 'd', b.slug); mkdirSync(dd, { recursive: true });
     writeFileSync(join(dd, 'DESIGN.md'), b.raw);
@@ -380,6 +384,7 @@ function main() {
     <p class="eyebrow">แหล่งไอเดียดีไซน์ · ไม่แสวงหาผลกำไร</p>
     <h1>${esc(SITE.headline)}</h1>
     <p class="lead">${esc(SITE.description)}</p>
+    <p class="hero-cta"><a class="btn primary" href="mix/">✨ ผสมสไตล์ของคุณเอง</a> <a class="btn" href="patterns/">ดูรูปแบบเลย์เอาต์ 14 แบบ</a></p>
     <div class="stats"><div><b>${brands.length}</b><span>สไตล์ดีไซน์</span></div><div><b>${Object.keys(VIBES).length}</b><span>แนวความรู้สึก</span></div><div><b>${brands.filter((b) => b.format === 'tokens').length}</b><span>มี design tokens</span></div></div>
   </div></section>
   <section class="wrap" id="brands">
@@ -401,6 +406,63 @@ function main() {
     <h2>ข้อควรรู้</h2><ul><li>ไฟล์เหล่านี้เป็นการ “วิเคราะห์เชิงแรงบันดาลใจ” จากเว็บไซต์จริง ใช้เพื่อการเรียนรู้ ไม่ใช่ไฟล์ทางการของแบรนด์</li><li>หน้าตัวอย่างบนเว็บนี้เป็นหน้าทั่วไปที่นำสี ตัวอักษร และมุมโค้งของแบรนด์มาใส่ <strong>ไม่ใช่การจำลองเว็บจริงของแบรนด์นั้น</strong></li><li>ไม่ควรใช้โลโก้ ชื่อ หรือทำให้ผลงานของคุณดูเหมือนเป็นเว็บของแบรนด์นั้น</li><li>ฟอนต์บางตัวเป็นของเสียเงิน หน้าตัวอย่างจึงใช้ Inter แทน</li></ul>
     <h2>เกี่ยวกับโครงการ</h2><p>${esc(SITE.disclaimer)}</p></section>`, { depth: 1 }));
 
+  // ---- Mix page + its live-preview frame + data ----
+  mkdirSync(join(OUT, 'data'), { recursive: true });
+  mkdirSync(join(OUT, 'mix', 'preview'), { recursive: true });
+  const CAT_KEYS = ['ai', 'dev', 'work', 'finance', 'auto', 'consumer', 'hardware', 'other'];
+  writeFileSync(join(OUT, 'data', 'mix.json'), JSON.stringify({
+    brands: mixBrands, models: Object.fromEntries(CAT_KEYS.map((k) => [k, categoryModel(k)])),
+    layouts: LAYOUTS.map(({ key, n, th, thai }) => ({ key, n, th, thai })),
+    prompts: PROMPT_TYPES.map(({ key, title, extra }) => ({ key, title, extra }))
+  }));
+  const FONT_LINK = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Thai:wght@400;500;600&display=swap';
+  const mixGroup = (id, label, hint) => `<div class="mx-group"><label for="mx-${id}"><b>${label}</b><small>${hint}</small></label><select id="mx-${id}"></select><div class="mx-pv" id="pv-${id}" aria-hidden="true"></div></div>`;
+  writeFileSync(join(OUT, 'mix', 'index.html'), PAGE(`ผสมสไตล์ — ${SITE.title}`, `<link href="${FONT_LINK}" rel="stylesheet">
+  <section class="hero"><div class="wrap"><p class="eyebrow">สร้างดีไซน์ของคุณเอง</p><h1>ผสมสไตล์</h1><p class="lead">เลือก <b>สี</b> จากแบรนด์หนึ่ง <b>ตัวอักษร</b> จากอีกแบรนด์ <b>รูปทรง</b> และ <b>ความรู้สึก</b> จากแบรนด์อื่น แล้วดูผลสดในหน้าตัวอย่าง จากนั้นดาวน์โหลดเป็น DESIGN.md ใหม่ของคุณเอง ให้ AI สร้างเว็บที่ไม่เหมือนใคร ไม่ใช่หน้าตาเดิมๆ</p></div></section>
+  <section class="wrap mix" id="mix" data-v="${V.mix}">
+    <div class="mix-ctrl">
+      <div class="mx-box"><h2>1. เว็บของคุณ</h2>
+        <label class="mx-f"><span>ชื่อเว็บ (ใช้แสดงในตัวอย่าง)</span><input id="mxName" type="text" maxlength="40" placeholder="Your Brand"></label>
+        <label class="mx-f"><span>ประเภทเว็บ (กำหนดข้อความตัวอย่าง)</span><select id="mxCat"></select></label>
+        <label class="mx-f"><span>เลย์เอาต์ (14 แบบ)</span><select id="mxLayout"></select></label></div>
+      <div class="mx-box"><h2>2. เลือกส่วนผสม</h2>
+        ${mixGroup('colors', 'สี', 'พื้นหลัง ตัวอักษร ปุ่ม แถบเข้ม สีเน้น')}${mixGroup('type', 'ตัวอักษร', 'ฟอนต์ ขนาด น้ำหนัก ระยะห่าง')}${mixGroup('shape', 'รูปทรง', 'มุมโค้งปุ่ม/การ์ด padding')}${mixGroup('feel', 'ความรู้สึก', 'เงา gradient ตัวพิมพ์ใหญ่ การ์ดสีบล็อก')}
+        <div class="mx-row"><button class="btn sm" id="mxRandom" type="button">🎲 สุ่ม</button><button class="btn sm" id="mxReset" type="button">รีเซ็ต</button><select id="mxAll" aria-label="ตั้งทุกกลุ่มเป็นแบรนด์เดียว"></select></div></div>
+      <div class="mx-box"><h2>3. ปรับสีหลักของคุณ <small>(ไม่บังคับ)</small></h2>
+        <label class="mx-f inline"><input id="mxPriOn" type="checkbox"><span>ใช้สีหลักของฉันแทนสีของแบรนด์ต้นแบบ</span><input id="mxPri" type="color" value="#533afd" aria-label="สีหลัก"></label>
+        <ul class="mx-warn" id="mxWarn" aria-live="polite"></ul></div>
+    </div>
+    <div class="mix-view">
+      <div class="mx-dev device-bar" role="group" aria-label="ขนาดหน้าจอ"><button class="chip on" data-w="100%" type="button">เดสก์ท็อป</button><button class="chip" data-w="820px" type="button">แท็บเล็ต</button><button class="chip" data-w="390px" type="button">มือถือ</button><button class="btn sm" id="mxShare" type="button" style="margin-left:auto">🔗 คัดลอกลิงก์การผสมนี้</button></div>
+      <div class="device-wrap"><iframe id="mxFrame" class="device" src="./preview/" title="ตัวอย่างหน้าเว็บจากสไตล์ที่ผสม"></iframe></div>
+    </div>
+  </section>
+  <section class="wrap mix-out" id="mxExport"><h2>ดาวน์โหลดผลงานของคุณ</h2>
+    <p class="muted">ไฟล์ที่ได้เป็นภาษาอังกฤษแบบเดียวกับ DESIGN.md ต้นแบบ เพื่อให้ AI อ่านเข้าใจ ใช้ชื่อเว็บและสีที่คุณเลือก และระบุแหล่งแรงบันดาลใจไว้ท้ายไฟล์</p>
+    <div class="actions"><button class="btn primary" id="mxDlMd" type="button">⬇ DESIGN.md</button><button class="btn" id="mxDlCss" type="button">tokens.css</button><button class="btn" id="mxDlJson" type="button">tokens.json</button><button class="btn" id="mxCopyMd" type="button">คัดลอก DESIGN.md</button></div>
+    <p class="mx-src"><b>ส่วนผสมที่ใช้:</b></p><ul class="plain-list" id="mxSrc"></ul>
+    <details class="doc"><summary>ดูตัวอย่างเนื้อหา DESIGN.md ที่สร้างขึ้น</summary><textarea id="mxMdText" readonly rows="18" aria-label="เนื้อหา DESIGN.md"></textarea></details>
+    <h3>คำสั่งให้ AI</h3><div class="mx-f"><select id="mxPrompt" aria-label="ประเภทเว็บ"></select></div><textarea id="mxPromptText" readonly rows="12" aria-label="คำสั่งให้ AI"></textarea><div class="actions"><button class="btn sm" id="mxCopyPrompt" type="button">คัดลอกคำสั่ง</button></div>
+    <p class="muted" style="margin-top:16px">ข้อควรรู้: การผสมสไตล์เป็นแรงบันดาลใจ ไม่ใช่การทำให้เหมือนแบรนด์ใดแบรนด์หนึ่ง ควรเปลี่ยนชื่อ โลโก้ ภาพ และข้อความเป็นของคุณเสมอ ฟอนต์ของแบรนด์ส่วนใหญ่เป็นของเสียเงิน ไฟล์ที่ได้ใช้ฟอนต์ใกล้เคียงที่หาได้ฟรี</p>
+  </section>
+  <script src="../assets/mix.js?v=${V.mix}" defer></script>`, { depth: 1 }));
+  writeFileSync(join(OUT, 'mix', 'preview', 'index.html'), `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Mix preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="${FONT_LINK}" rel="stylesheet">
+<link rel="stylesheet" href="../../assets/preview.css?v=${V.preview}"><style>.mixwait{padding:40px;text-align:center;font:14px system-ui;color:#667}</style></head>
+<body><div id="app"><p class="mixwait">กำลังโหลดตัวอย่าง…</p></div>
+<script type="module">
+import { renderLayout, activate } from '../../assets/layouts.js?v=${V.layouts}';
+const app = document.getElementById('app'); let cleanup = null;
+function apply(d) {
+  const y = window.scrollY; if (cleanup) cleanup();
+  document.documentElement.style.cssText = d.style; document.documentElement.className = d.classes + ' framed'; document.body.className = d.dark ? 'is-dark' : '';
+  app.innerHTML = renderLayout(d.layout, d.model); cleanup = activate(app); window.scrollTo(0, y);
+}
+window.addEventListener('message', (e) => { if (e.origin !== location.origin) return; const d = e.data; if (d && d.type === 'mix') apply(d); });
+parent.postMessage({ type: 'ready' }, location.origin);
+</script></body></html>`);
+
   // patterns gallery
   mkdirSync(join(OUT, 'patterns'), { recursive: true });
   const brandOpts = brands.map((x) => `<option value="${esc(x.slug)}"${x.slug === 'stripe' ? ' selected' : ''}>${esc(x.name)}</option>`).join('');
@@ -413,7 +475,7 @@ function main() {
 
   writeFileSync(join(OUT, 'brands.json'), JSON.stringify(brands.map((b) => ({ slug: b.slug, name: b.name, category: b.category, format: b.format, colors: Object.keys(b.tokens.colors).length })), null, 2));
   writeFileSync(join(OUT, '404.html'), PAGE('ไม่พบหน้านี้', '<section class="wrap content narrow"><h1>ไม่พบหน้านี้</h1><p><a href="/">กลับหน้าแรก</a></p></section>'));
-  const sm = ['/', '/about/', '/patterns/', ...brands.map((b) => `/b/${b.slug}/`)];
+  const sm = ['/', '/about/', '/patterns/', '/mix/', ...brands.map((b) => `/b/${b.slug}/`)];
   writeFileSync(join(OUT, 'sitemap.txt'), sm.map((p) => (SITE.url || '') + p).join('\n') + '\n');
 
   const legacy = brands.filter((b) => b.format === 'legacy').map((b) => b.slug);

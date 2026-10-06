@@ -181,6 +181,7 @@ export function renderLayout(key, M) { return (RENDER[key] || heroLayout)(M); }
 
 /** Small behaviours (all optional): collapse sidebar, font size, filters, sticky shrink + progress, countdown. */
 export function activate(root) {
+  const cleanups = [];
   const $ = (s) => [...root.querySelectorAll(s)];
   $('[data-collapse]').forEach((b) => b.addEventListener('click', () => root.querySelector('[data-collapse-root]').classList.toggle('collapsed')));
   const art = root.querySelector('[data-article]');
@@ -196,14 +197,15 @@ export function activate(root) {
   if (nav) {
     const bar = root.querySelector('[data-progress]');
     const on = () => { nav.classList.toggle('shrunk', window.scrollY > 40); if (bar) { const h = document.documentElement.scrollHeight - window.innerHeight; bar.style.width = (h > 0 ? Math.min(100, (window.scrollY / h) * 100) : 0) + '%'; } };
-    window.addEventListener('scroll', on, { passive: true }); on();
+    window.addEventListener('scroll', on, { passive: true }); on(); cleanups.push(() => window.removeEventListener('scroll', on));
   }
   const cd = root.querySelector('[data-countdown]');
   if (cd) {
     const end = Date.now() + (2 * 3600 + 13 * 60 + 45) * 1000, p = (n) => String(n).padStart(2, '0');
     const tick = () => { const t = Math.max(0, Math.floor((end - Date.now()) / 1000)); cd.querySelector('[data-h]').textContent = p(Math.floor(t / 3600)); cd.querySelector('[data-m]').textContent = p(Math.floor((t % 3600) / 60)); cd.querySelector('[data-s]').textContent = p(t % 60); };
-    tick(); setInterval(tick, 1000);
+    tick(); const iv = setInterval(tick, 1000); cleanups.push(() => clearInterval(iv));
   }
+  return () => cleanups.forEach((f) => f());
 }
 
 /** Tiny wireframes for the /patterns/ gallery. */

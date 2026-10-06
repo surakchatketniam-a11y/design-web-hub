@@ -197,6 +197,17 @@ function extractShadows(body) {
   return out.slice(0, 3);
 }
 
+/** Category presets used by the Mix page (copy, features, defaults) — same data the brand previews use. */
+export function categoryModel(cat) {
+  const copy = COPY[cat] || COPY.other;
+  const oneTime = cat === 'auto' || cat === 'hardware';
+  return {
+    category: cat, copy: { ...copy, fine: FINE[cat] || 'No credit card required · Free plan available' },
+    feats: FEATURES_BY[cat] || FEATURES, editorial: ['auto', 'consumer', 'hardware'].includes(cat), oneTime,
+    specs: cat === 'auto' ? [['3.2s', '0–100 km/h'], ['800 hp', 'Peak power'], ['340 km/h', 'Top speed'], ['1,380 kg', 'Dry weight']] : [['4.9★', 'Average rating'], ['2M+', 'Happy customers'], ['120+', 'Countries'], ['24/7', 'Support']]
+  };
+}
+
 export function renderLanding(b, theme, ctx) {
   const t = b.tokens, get = (v) => resolveRef(v, t);
   const copy = COPY[b.category] || COPY.other;
@@ -270,6 +281,7 @@ export function renderLanding(b, theme, ctx) {
   const specs = b.category === 'auto'
     ? [['3.2s', '0–100 km/h'], ['800 hp', 'Peak power'], ['340 km/h', 'Top speed'], ['1,380 kg', 'Dry weight']]
     : [['4.9★', 'Average rating'], ['2M+', 'Happy customers'], ['120+', 'Countries'], ['24/7', 'Support']];
+  if (ctx) { ctx.vars = vars; ctx.classes = T.classes; ctx.hasBand = R.hasBand; ctx.tileCount = T.tiles.length; ctx.dark = !!theme.dark; ctx.fonts = { display: display?.fontFamily || '', body: body?.fontFamily || display?.fontFamily || '' }; }
   const M = {
     name: b.name, slug: b.slug, category: b.category,
     copy: { ...copy, fine: FINE[b.category] || 'No credit card required · Free plan available' },
