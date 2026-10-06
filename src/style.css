@@ -138,3 +138,5 @@ input[type=search] { width:100%; max-width:480px; padding:12px 14px; border:1px 
 @media (max-width: 760px) { .fgroup { flex-direction: column; gap: 4px; } .flabel { width: auto; padding-top: 0; } }
 
 [hidden] { display: none !important; }
+
+.sw { min-height: 104px; } .sw .use { font-size: 11px; line-height: 1.35; opacity: .85; margin-top: 2px; } .sw .use.none { opacity: .6; font-style: italic; }

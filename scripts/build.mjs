@@ -229,10 +229,13 @@ function renderBrandPage(b, siblings) {
     <div class="device-wrap"><iframe id="pv" class="device" src="${previewUrl}" title="ตัวอย่างการนำสีและฟอนต์ของ ${esc(b.name)} ไปใช้กับหน้าทั่วไป" loading="lazy"></iframe></div>`;
 
   const colorEntries = Object.entries(t.colors);
+  const usedBy = (v) => { const c = parseColor(v); if (!c) return []; return (b.usage || []).filter(([, uv]) => { const u = parseColor(uv); return u && Math.abs(u.r - c.r) + Math.abs(u.g - c.g) + Math.abs(u.b - c.b) < 8; }).map(([l]) => l); };
+  const usedCount = colorEntries.filter(([, v]) => usedBy(v).length).length;
   const palette = colorEntries.length ? `<div class="palette">${colorEntries.map(([k, v]) => {
     const c = parseColor(v);
     const fg = c && c.a > 0.5 ? readableOn(c) : '#111';
-    return `<button class="sw" data-copy="${esc(v)}" title="คลิกเพื่อคัดลอก ${esc(v)}" style="background:${css(v, '#ccc')};color:${fg}"><span>${esc(k)}</span><code>${esc(v)}</code></button>`;
+    const labels = [...new Set(usedBy(v))];
+    return `<button class="sw" data-copy="${esc(v)}" title="คลิกเพื่อคัดลอก ${esc(v)}" style="background:${css(v, '#ccc')};color:${fg}"><span>${esc(k)}</span><code>${esc(v)}</code><small class="use${labels.length ? '' : ' none'}">${labels.length ? 'ใช้ใน: ' + esc(labels.slice(0, 3).join(' · ')) + (labels.length > 3 ? ` +${labels.length - 3}` : '') : 'ไม่ได้ใช้ในตัวอย่าง'}</small></button>`;
   }).join('')}</div>` : '<p class="muted">ไฟล์นี้ไม่มีข้อมูลสีแบบมีโครงสร้าง</p>';
 
   const typo = tyEntries.length ? `<div class="typo">${tyEntries.map(([k, v]) => `<div class="trow"><div class="tmeta"><code>${esc(k)}</code><span>${esc(String(v.fontSize ?? ''))} · ${esc(String(v.fontWeight ?? ''))} · lh ${esc(String(v.lineHeight ?? '-'))} · ls ${esc(String(v.letterSpacing ?? '0'))}</span></div><div class="tsample" style="${typoStyle(v, 64)}">Aa The quick brown fox 0123456789</div></div>`).join('')}</div>` : '';
@@ -261,7 +264,7 @@ function renderBrandPage(b, siblings) {
       return `<article class="pcard"><div class="phead"><h3>${esc(t.title)}</h3>${rec ? '<em class="rec">เหมาะกับสไตล์นี้</em>' : ''}</div><pre>${esc(txt)}</pre><button class="btn sm" data-copy="${esc(txt)}">คัดลอกคำสั่ง</button></article>`; }).join('')}</div>`;
 
   const tabDefs = [
-    { id: 'colors', label: 'สี', count: colorEntries.length, html: `<p class="muted">คลิกที่สีเพื่อคัดลอกค่า</p>${palette}` },
+    { id: 'colors', label: 'สี', count: colorEntries.length, html: `<p class="muted">คลิกที่สีเพื่อคัดลอกค่า · <strong>หน้าตัวอย่างนำไปใช้ ${usedCount} จาก ${colorEntries.length} สี</strong> (สีที่ค่าเดียวกันนับว่าใช้ร่วมกัน) แต่ละสีบอกว่าถูกใช้ตรงไหน สีที่ “ไม่ได้ใช้ในตัวอย่าง” ยังมีอยู่ในไฟล์ DESIGN.md และ tokens.css</p>${palette}` },
     { id: 'ai', label: 'คำสั่งให้ AI', count: 0, html: aiHtml },
     typo && { id: 'type', label: 'ตัวอักษร', count: tyEntries.length, html: typo },
     shapes && { id: 'shapes', label: 'รูปทรงและระยะห่าง', count: 0, html: shapes },
@@ -319,9 +322,11 @@ function main() {
 
   for (const b of brands) {
     const dir = join(OUT, 'b', b.slug); mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
+    const lctx = { v: V.preview };
     const pd = join(OUT, 'p', b.slug); mkdirSync(pd, { recursive: true });
-    writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight }), { v: V.preview }));
+    writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight }), lctx));
+    b.usage = lctx.usage || [];
+    writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
     const dd = join(OUT, 'd', b.slug); mkdirSync(dd, { recursive: true });
     writeFileSync(join(dd, 'DESIGN.md'), b.raw);
     writeFileSync(join(dd, 'tokens.css'), tokenCss(b));

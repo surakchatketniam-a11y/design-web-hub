@@ -80,3 +80,16 @@ h3 { font-size: 19px; font-weight: 600; line-height: 1.3; margin-bottom: 8px; }
 .ed.soft .ed-hero { background: linear-gradient(120deg, var(--sur), color-mix(in srgb, var(--bg) 60%, var(--sur))); color: var(--ink); border: 1px solid var(--bd); }
 .ed.soft .ed-hero::after { opacity: .25; }
 .ed.soft .ed-img { background: linear-gradient(135deg, var(--bd), var(--sur)) !important; }
+
+/* palette roles: tinted section backgrounds, dark bands, status colors, link color */
+.alt { background: var(--soft1); } .alt2 { background: var(--soft2); }
+.card.tint1 { background: var(--soft1); border-color: var(--bd2); } .card.tint2 { background: var(--soft2); border-color: var(--bd2); } .card.tint3 { background: var(--soft3); border-color: var(--bd2); }
+.alt .card.tint1, .alt .card.tint2, .alt .card.tint3 { background: var(--bg); }
+.stats.band { background: var(--band1); color: var(--onband1); border-color: transparent; } .stats.band span { color: inherit; opacity: .75; }
+.tier.feat { background: var(--feat-bg); color: var(--feat-fg); border-color: var(--feat-bg); } .tier.feat .btn-inv { background: var(--feat-fg); color: var(--feat-bg); border-color: var(--feat-fg); }
+.pill.err { background: color-mix(in srgb, var(--err) 20%, var(--bg)); color: var(--ink); }
+.lnk, .is-dark .lnk { color: var(--linkc); }
+.sub, .lede { color: color-mix(in srgb, var(--ink2) 80%, var(--bg)); }
+.card, .tier, .faq details, .kpis div, .rows, .chart { border-color: var(--bd2); }
+
+.sub-form input:focus { outline: 2px solid var(--focusc); outline-offset: 1px; border-color: var(--focusc); }

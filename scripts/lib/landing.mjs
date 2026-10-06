@@ -1,7 +1,7 @@
 // Builds a full, self-contained landing page that wears a brand's design tokens.
 // The copy is generic sample text; only colors / type / radii / spacing come from DESIGN.md.
 import { esc } from './md.mjs';
-import { parseColor, readableOn, resolveRef, luminance } from './theme.mjs';
+import { parseColor, readableOn, resolveRef, luminance, contrast } from './theme.mjs';
 
 const SAFE = /^[#\w().,%\s/+*'"-]+$/;
 const css = (v, fb = '') => (typeof v === 'string' && SAFE.test(v) ? v : fb);
@@ -73,6 +73,75 @@ function tvars(prefix, t, fb) {
   return `--${prefix}-size:${size}px;--${prefix}-weight:${css(String(t?.fontWeight ?? fb.weight), '400')};--${prefix}-lh:${css(String(t?.lineHeight ?? fb.lh), '1.3')};--${prefix}-ls:${(ls / size).toFixed(4)}em`;
 }
 
+
+const dist = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b);
+const chromaOf = (c) => Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b);
+const BORDERISH = /border|hairline|divider|stroke|outline|(^|-)line($|-)/;
+const NOT_FILL = /^(on-|text|body|ink|mute|muted|shadow|overlay|scrim|link|focus|form-focus|error|danger|negative|success|positive|warn|info|disabled|placeholder|slate)/;
+
+/** Spread a brand's whole palette across page roles (bands, tinted sections, accents, status, links) and record where each color is used. */
+function buildPalette(colors, theme, o) {
+  const solid = Object.entries(colors).map(([name, value]) => ({ name, value, c: parseColor(value) })).filter((x) => x.c && x.c.a >= 0.99).map((x) => ({ ...x, lum: luminance(x.c), chroma: chromaOf(x.c) }));
+  const bgC = parseColor(theme.bg), inkC = parseColor(theme.ink), priC = parseColor(o.priBg) || parseColor(theme.primary);
+  const near = (x, c, d = 40) => c && dist(x.c, c) < d;
+  const fillable = (x) => !NOT_FILL.test(x.name) && !BORDERISH.test(x.name);
+  const uniq = (list, n, d) => { const out = []; for (const x of list) { if (out.every((y) => dist(x.c, y.c) > d)) out.push(x); if (out.length >= n) break; } return out; };
+  const hint = /(dark|night|band|deep|surface|navy|forest|midnight)/;
+
+  // dark bands (stats strip, closing CTA, featured plan)
+  let bands;
+  if (!theme.dark) {
+    bands = uniq(solid.filter((x) => fillable(x) && x.lum < 0.14 && !near(x, bgC) && !near(x, inkC, 25) && (x.chroma > 30 || hint.test(x.name)))
+      .sort((a, b) => (b.chroma > 30) - (a.chroma > 30) || hint.test(b.name) - hint.test(a.name) || b.chroma - a.chroma), 2, 30);
+  } else {
+    bands = uniq(solid.filter((x) => fillable(x) && x.chroma > 45 && x.lum < 0.25 && !near(x, bgC, 30)).sort((a, b) => b.chroma - a.chroma), 2, 30);
+  }
+  // softly tinted surfaces used to alternate section backgrounds
+  let softs;
+  if (!theme.dark) {
+    softs = uniq(solid.filter((x) => fillable(x) && x.lum > 0.7 && !near(x, bgC, 12)).sort((a, b) => b.chroma - a.chroma), 3, 14);
+  } else {
+    const bl = luminance(bgC);
+    softs = uniq(solid.filter((x) => fillable(x) && x.lum > bl + 0.004 && x.lum < 0.12 && x.chroma < 60).sort((a, b) => a.lum - b.lum), 3, 10);
+  }
+  const taken = [...bands, ...softs];
+  const accPool = uniq(solid.filter((x) => fillable(x) && sat(x.c) > 0.35 && x.lum > 0.04 && x.lum < 0.85 && !near(x, priC, 60) && !taken.some((t) => dist(t.c, x.c) < 20)), 6, 70);
+  const accents = [];
+  for (let i = 0; i < 6; i++) accents.push(accPool.length ? accPool[i % accPool.length].value : o.priBg);
+  const byName = (re) => solid.find((x) => re.test(x.name));
+  const err = byName(/(error|danger|negative|critical|destructive)/), okc = byName(/(success|positive)/), warn = byName(/warn/);
+  const link = byName(/^(link|text-link|action-link|link-blue|action-blue)$/);
+  const ink2 = solid.find((x) => /(body-muted|ink-secondary|text-secondary|body-secondary|slate|ink-muted)$/.test(x.name) && contrast(x.c, bgC) >= 4.5);
+  const bd2 = byName(/(card-border|border-light|hairline-soft|border-soft|border-subtle)/);
+  const focus = byName(/focus/);
+
+  const soft = [0, 1, 2].map((i) => softs[i]?.value || theme.surface);
+  const band1 = bands[0]?.value || null, band2 = bands[1]?.value || band1;
+  const cta = band2 || band1 || o.priBg;
+  const vars = {
+    soft1: soft[0], soft2: soft[1], soft3: soft[2],
+    band1: band1 || o.priBg, onband1: readableOn(parseColor(band1 || o.priBg) || priC),
+    cta, oncta: readableOn(parseColor(cta) || priC),
+    a1: accents[0], a2: accents[1], a3: accents[2], a4: accents[3], a5: accents[4], a6: accents[5],
+    err: err?.value || accents[1], okc: okc?.value || accents[0], warnc: warn?.value || accents[2],
+    linkc: link?.value || o.priBg, focusc: focus?.value || o.priBg, ink2: ink2?.value || theme.mute, bd2: bd2?.value || theme.border
+  };
+  const usage = [
+    ['พื้นหลังหน้า', theme.bg], ['ตัวอักษรหลัก/หัวข้อ', theme.ink], ['ตัวอักษรรอง/คำอธิบาย', vars.ink2], ['ตัวอักษรเล็ก/ป้ายกำกับ', theme.mute],
+    ['ปุ่มหลัก', o.priBg], ['ตัวอักษรบนปุ่มหลัก', o.priFg], ['ปุ่มรอง/ตัวอักษรปุ่มรอง', o.secFg], ['พื้นการ์ดและช่องกรอก', theme.surface],
+    ['เส้นขอบและเส้นแบ่ง', theme.border], ['เส้นขอบการ์ด', vars.bd2], ['ลิงก์', vars.linkc]
+  ];
+  if (band1) usage.push(['แถบเข้ม: แถบตัวเลขสถิติ และแผนราคาเด่น', band1]);
+  if (band2 || band1) usage.push(['แถบเข้ม: แบนเนอร์ปิดท้าย (CTA)', cta]);
+  softs.forEach((x, i) => usage.push([`พื้นส่วนสลับ/การ์ดโทนอ่อน ${i + 1}`, x.value]));
+  accPool.forEach((x) => usage.push(['สีเน้น: ไอคอน กราฟ ภาพประกอบ', x.value]));
+  if (err) usage.push(['ป้ายสถานะ: ผิดพลาด', err.value]);
+  if (okc) usage.push(['ป้ายสถานะ: สำเร็จ', okc.value]);
+  if (warn) usage.push(['ป้ายสถานะ: เตือน', warn.value]);
+  if (focus) usage.push(['สถานะโฟกัสของช่องกรอก (ลองกดช่องอีเมลท้ายหน้า)', focus.value]);
+  return { vars, usage, hasBand: !!band1 };
+}
+
 export function renderLanding(b, theme, ctx) {
   const t = b.tokens, get = (v) => resolveRef(v, t);
   const copy = COPY[b.category] || COPY.other;
@@ -92,19 +161,24 @@ export function renderLanding(b, theme, ctx) {
   const P = pk ? t.components[pk] : {}, S = sk ? t.components[sk] : {}, C = ck ? t.components[ck] : {}, I = ik ? t.components[ik] : {};
   const radBtn = css(get(P.rounded), '8px'), radCard = css(get(C.rounded), '12px'), radIn = css(get(I.rounded), radBtn);
   const priBg = parseColor(get(P.backgroundColor)) ? css(get(P.backgroundColor)) : theme.primary;
-  const priFg = parseColor(get(P.textColor)) ? css(get(P.textColor)) : readableOn(parseColor(priBg) || parseColor(theme.primary));
+  const priFgRaw = parseColor(get(P.textColor)) ? css(get(P.textColor)) : null;
+  const priBgC = parseColor(priBg) || parseColor(theme.primary);
+  const priFg = priFgRaw && contrast(parseColor(priFgRaw), priBgC) >= 3 ? priFgRaw : readableOn(priBgC);
   const secBg = parseColor(get(S.backgroundColor)) && parseColor(get(S.backgroundColor)).a > 0.05 ? css(get(S.backgroundColor)) : 'transparent';
   const secFg = parseColor(get(S.textColor)) ? css(get(S.textColor)) : theme.ink;
   const padBtn = css(String(P.padding ?? '11px 20px').replace(/(\d+(?:\.\d+)?)px/g, (_, n) => `${Math.min(parseFloat(n), 28)}px`), '11px 20px');
 
-  const acc = accents(t.colors, theme.primary);
+  const R = buildPalette(t.colors, theme, { priBg, priFg, secFg });
+  if (ctx) ctx.usage = R.usage;
+  const P2 = R.vars;
   const inv = theme.dark ? theme.ink : theme.ink; // inverse block = ink on bg
   const onInv = theme.bg;
   const fd = fontFor(display?.fontFamily), fb = fontFor(body?.fontFamily || display?.fontFamily);
   const vars = [
     `--bg:${css(theme.bg, '#fff')}`, `--ink:${css(theme.ink, '#111')}`, `--mute:${css(theme.mute, '#666')}`, `--pri:${css(priBg, '#333')}`, `--onpri:${css(priFg, '#fff')}`,
     `--sur:${css(theme.surface, '#f5f5f5')}`, `--bd:${css(theme.border, '#ddd')}`, `--inv:${css(inv, '#111')}`, `--oninv:${css(onInv, '#fff')}`,
-    `--a1:${css(acc[0], '#999')}`, `--a2:${css(acc[1], '#999')}`, `--a3:${css(acc[2], '#999')}`,
+    ...Object.entries(P2).map(([k, v]) => `--${k}:${css(v, '#999')}`),
+    `--feat-bg:${css(R.hasBand ? P2.band1 : inv, '#111')}`, `--feat-fg:${css(R.hasBand ? P2.onband1 : onInv, '#fff')}`,
     `--r-btn:${radBtn}`, `--r-card:${radCard}`, `--r-in:${radIn}`, `--pad-btn:${padBtn}`,
     `--sec-bg:${secBg}`, `--sec-fg:${secFg}`, `--fd:${fd}`, `--fb:${fb}`,
     tvars('h1', display, { size: 56, weight: 600, lh: 1.1 }),
@@ -126,7 +200,7 @@ export function renderLanding(b, theme, ctx) {
       <div class="mock-main">
         <div class="kpis"><div><small>Revenue</small><b>$48.2k</b></div><div><small>Active users</small><b>12,480</b></div><div><small>Conversion</small><b>3.8%</b></div></div>
         <div class="chart">${[38, 52, 44, 68, 58, 80, 72, 94].map((h, i) => `<span style="height:${h}%;background:${i % 3 === 0 ? 'var(--a1)' : i % 3 === 1 ? 'var(--pri)' : 'var(--a2)'}"></span>`).join('')}</div>
-        <div class="rows">${[['Acme Inc.', 'Paid', '$2,400'], ['Globex', 'Pending', '$1,150'], ['Initech', 'Paid', '$880']].map(([a, s, v]) => `<div><span>${a}</span><em class="pill ${s === 'Paid' ? 'ok' : 'soft'}">${s}</em><b>${v}</b></div>`).join('')}</div>
+        <div class="rows">${[['Acme Inc.', 'Paid', '$2,400'], ['Globex', 'Pending', '$1,150'], ['Initech', 'Failed', '$880'], ['Umbrella', 'Paid', '$640']].map(([a, s, v]) => `<div><span>${a}</span><em class="pill ${s === 'Paid' ? 'ok' : s === 'Failed' ? 'err' : 'soft'}">${s}</em><b>${v}</b></div>`).join('')}</div>
       </div>
     </div></div>`;
 
@@ -172,7 +246,7 @@ export function renderLanding(b, theme, ctx) {
 
 <section class="sec"><div class="in">
   <p class="eyebrow">Features</p><h2>Everything you need, nothing you don’t</h2><p class="lede">A focused set of capabilities designed to help you get to the result faster.</p>
-  <div class="grid3">${feats.map(([h, p], i) => `<article class="card"><div class="ico" style="background:var(--${['pri', 'a1', 'a2'][i % 3]})"></div><h3>${h}</h3><p>${p}</p><a class="lnk">Learn more →</a></article>`).join('')}</div>
+  <div class="grid3">${feats.map(([h, p], i) => `<article class="card tint${i % 3 + 1}"><div class="ico" style="background:var(--${i % 6 === 0 ? 'pri' : 'a' + (i % 6)})"></div><h3>${h}</h3><p>${p}</p><a class="lnk">Learn more →</a></article>`).join('')}</div>
 </div></section>
 
 <section class="sec alt"><div class="in split">
@@ -181,11 +255,11 @@ export function renderLanding(b, theme, ctx) {
   <div class="panel" aria-hidden="true"><div class="chart tall">${[30, 46, 40, 62, 55, 74, 68, 90, 82, 100].map((h, i) => `<span style="height:${h}%;background:${i % 2 ? 'var(--pri)' : 'var(--a1)'}"></span>`).join('')}</div><div class="legend"><span><i style="background:var(--pri)"></i>This year</span><span><i style="background:var(--a1)"></i>Last year</span></div></div>
 </div></section>
 
-<section class="stats"><div class="in">${specs.map(([n, l]) => `<div><b>${n}</b><span>${l}</span></div>`).join('')}</div></section>
+<section class="stats${R.hasBand ? ' band' : ''}"><div class="in">${specs.map(([n, l]) => `<div><b>${n}</b><span>${l}</span></div>`).join('')}</div></section>
 
 <section class="sec"><div class="in"><figure class="quote"><blockquote>“It changed how our whole team works. We shipped in weeks what used to take months.”</blockquote><figcaption><span class="av"></span><div><b>Alex Morgan</b><small>Head of Product, Northwind</small></div></figcaption></figure></div></section>
 
-<section class="sec alt"><div class="in"><p class="eyebrow center">${oneTime ? 'Configurations' : 'Pricing'}</p><h2 class="center">${oneTime ? 'Choose the one that fits you' : 'Simple plans that grow with you'}</h2>
+<section class="sec alt alt2"><div class="in"><p class="eyebrow center">${oneTime ? 'Configurations' : 'Pricing'}</p><h2 class="center">${oneTime ? 'Choose the one that fits you' : 'Simple plans that grow with you'}</h2>
   <div class="grid3 tiers">${oneTime
     ? priceTier('Essential', b.category === 'auto' ? '$189k' : '$799', ['Core specification', 'Standard finish', '2-year warranty'], false, 'Configure', '') + priceTier('Performance', b.category === 'auto' ? '$249k' : '$1,099', ['Upgraded performance', 'Premium materials', 'Extended warranty', 'Priority service'], true, 'Configure', '') + priceTier('Collector', b.category === 'auto' ? '$420k' : '$1,499', ['Limited edition', 'Bespoke options', 'Concierge support'], false, 'Configure', '')
     : priceTier('Starter', '$0', ['Up to 3 projects', 'Community support', 'Basic reports'], false) + priceTier('Pro', '$24', ['Unlimited projects', 'Priority support', 'Advanced reports', 'Team permissions'], true) + priceTier('Business', '$79', ['Single sign-on', 'Audit log', 'Dedicated manager'], false)}</div>
@@ -196,7 +270,7 @@ export function renderLanding(b, theme, ctx) {
   <form class="sub-form" onsubmit="return false"><input type="email" placeholder="you@company.com" aria-label="Email"><a class="btn btn-pri">Subscribe</a></form>
 </div></section>
 
-<section class="band"><div class="in"><h2>Ready to get started with ${name}?</h2><p>Join thousands of people already using it every day.</p><div class="cta"><a class="btn btn-inv btn-lg">${esc(copy.cta[0])}</a><a class="btn btn-ghost btn-lg">${esc(copy.cta[1])}</a></div></div></section>
+<section class="band" style="background:${css(P2.cta, '#333')};color:${css(P2.oncta, '#fff')};--pri:${css(P2.cta, '#333')};--onpri:${css(P2.oncta, '#fff')}"><div class="in"><h2>Ready to get started with ${name}?</h2><p>Join thousands of people already using it every day.</p><div class="cta"><a class="btn btn-inv btn-lg">${esc(copy.cta[0])}</a><a class="btn btn-ghost btn-lg">${esc(copy.cta[1])}</a></div></div></section>
 
 <footer class="foot"><div class="in">
   <div class="fcols"><div><b class="logo">${name}</b><p>Sample footer for a page built from the ${name} design tokens.</p></div>
