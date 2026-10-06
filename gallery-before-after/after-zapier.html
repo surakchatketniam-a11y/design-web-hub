@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ช่างไฟใจดี — งานไฟฟ้าที่คุยง่าย</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Anuphan:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Tokens — from DESIGN.md (Zapier-inspired) */
+  :root {
+    --color-primary: #ff4f00;
+    --color-on-primary: #fffefb;
+    --color-ink: #201515;
+    --color-ink-soft: #2f2a26;
+    --color-ink-mid: #36342e;
+    --color-body: #605d52;
+    --color-body-mid: #939084;
+    --color-mute: #c5c0b1;
+    --color-canvas: #fffefb;
+    --color-canvas-soft: #f8f4f0;
+    --rounded-sm: 6px; --rounded-md: 12px; --rounded-pill: 9999px;
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px; --space-lg: 16px; --space-xl: 24px;
+    --space-2xl: 32px; --space-3xl: 48px; --space-4xl: 64px;
+    --font: Inter, 'Anuphan', 'Noto Sans Thai', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); font-size: 18px; line-height: 1.75; color: var(--color-body); background: var(--color-canvas); overflow-wrap: break-word; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 var(--space-xl); }
+  h1, h2, h3 { color: var(--color-ink); line-height: 1.35; }
+  h1 { font-size: 56px; font-weight: 500; }
+  h2 { font-size: 48px; font-weight: 500; }
+  h3 { font-size: 24px; font-weight: 600; }
+  .eyebrow { font-size: 14px; font-weight: 500; color: var(--color-ink); margin-bottom: var(--space-lg); display: flex; align-items: center; gap: var(--space-sm); }
+  .eyebrow::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); }
+
+  .btn { display: inline-flex; align-items: center; gap: var(--space-sm); padding: var(--space-md) var(--space-xl); border-radius: var(--rounded-md); font: 600 18px/1.5 var(--font); text-decoration: none; border: 1px solid transparent; cursor: pointer; }
+  .btn-primary { background: var(--color-primary); color: var(--color-on-primary); }
+  .btn-secondary { background: var(--color-ink); color: var(--color-on-primary); }
+  .btn-tertiary { background: var(--color-canvas); color: var(--color-ink); border-color: var(--color-ink); }
+  .badge { display: inline-block; background: var(--color-canvas-soft); color: var(--color-ink); border-radius: var(--rounded-pill); padding: var(--space-xs) var(--space-md); font-size: 16px; }
+
+  /* nav */
+  nav { background: var(--color-canvas); padding: var(--space-md) 0; border-bottom: 1px solid var(--color-mute); position: sticky; top: 0; z-index: 5; }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xl); }
+  .brand { display: flex; align-items: center; gap: var(--space-sm); font-weight: 700; font-size: 20px; color: var(--color-ink); text-decoration: none; }
+  .brand i { width: 28px; height: 28px; border-radius: var(--rounded-sm); background: var(--color-primary); display: grid; place-items: center; }
+  nav ul { display: flex; gap: var(--space-xl); list-style: none; font-size: 16px; }
+  nav ul a { color: var(--color-ink); text-decoration: none; }
+  nav .btn { font-size: 16px; padding: var(--space-sm) var(--space-lg); }
+
+  /* hero-band (split) */
+  .hero { padding: var(--space-4xl) 0; }
+  .hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--space-3xl); align-items: center; }
+  .hero p.lead { font-size: 20px; line-height: 1.75; margin: var(--space-xl) 0 var(--space-2xl); max-width: 32em; }
+  .hero-actions { display: flex; gap: var(--space-md); flex-wrap: wrap; }
+  .trust { display: flex; gap: var(--space-sm); flex-wrap: wrap; margin-top: var(--space-2xl); }
+  .hero-ill { background: var(--color-canvas-soft); border-radius: var(--rounded-md); aspect-ratio: 1 / 1; padding: var(--space-xl); }
+  .hero-ill svg { width: 100%; height: 100%; }
+
+  /* content-band-cream: stats + services */
+  .band-cream { background: var(--color-canvas-soft); padding: var(--space-4xl) 0; }
+  .band-light { padding: var(--space-4xl) 0; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-xl); padding-bottom: var(--space-3xl); margin-bottom: var(--space-3xl); border-bottom: 1px solid var(--color-mute); }
+  .stats b { display: block; font-size: 32px; font-weight: 500; color: var(--color-ink); line-height: 1.3; }
+  .stats span { font-size: 16px; }
+  .head { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3xl); align-items: end; margin-bottom: var(--space-3xl); }
+
+  .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-lg); }
+  .card { background: var(--color-canvas); border-radius: var(--rounded-md); padding: var(--space-xl); display: flex; flex-direction: column; gap: var(--space-md); }
+  .card svg { width: 40px; height: 40px; }
+  .card p { font-size: 16px; line-height: 1.7; }
+  .card.dark { background: var(--color-ink); grid-row: span 2; justify-content: space-between; }
+  .card.wide { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: var(--space-xl); }
+  .card.wide h3 { flex: 0 0 auto; }
+  .card.dark h3 { color: var(--color-on-primary); font-size: 32px; font-weight: 500; }
+  .card.dark p { color: var(--color-mute); font-size: 18px; }
+
+  /* process: horizontal timeline */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-xl); counter-reset: s; }
+  .step { border-top: 2px solid var(--color-ink); padding-top: var(--space-xl); }
+  .step .num { font-size: 14px; font-weight: 600; color: var(--color-primary); }
+  .step h3 { font-size: 20px; margin: var(--space-sm) 0; }
+  .step p { font-size: 16px; }
+
+  /* projects */
+  .projects { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-xl); }
+  .proj { border: 1px solid var(--color-ink); border-radius: var(--rounded-md); overflow: hidden; background: var(--color-canvas); }
+  .proj .ill { background: var(--color-canvas-soft); aspect-ratio: 16 / 10; }
+  .proj .ill svg { width: 100%; height: 100%; display: block; }
+  .proj .body { padding: var(--space-xl); }
+  .proj .body p { font-size: 16px; margin-top: var(--space-sm); }
+
+  /* faq */
+  .faq { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-lg); }
+  .faq .card h3 { font-size: 20px; }
+
+  /* contact: dark hero band */
+  .contact { background: var(--color-ink); padding: var(--space-4xl) 0; }
+  .contact .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3xl); }
+  .contact h2 { color: var(--color-on-primary); }
+  .contact p { color: var(--color-mute); margin-top: var(--space-lg); }
+  .contact ul { list-style: none; margin-top: var(--space-2xl); color: var(--color-canvas-soft); display: grid; gap: var(--space-sm); }
+  form { background: var(--color-canvas-soft); border-radius: var(--rounded-md); padding: var(--space-2xl); display: grid; gap: var(--space-lg); }
+  label { font-size: 16px; font-weight: 600; color: var(--color-ink); display: block; margin-bottom: var(--space-xs); }
+  input, select, textarea { width: 100%; background: var(--color-canvas); color: var(--color-ink); border: 1px solid var(--color-ink); border-radius: var(--rounded-sm); padding: var(--space-md) var(--space-lg); font: 400 18px/1.6 var(--font); }
+  input::placeholder, textarea::placeholder { color: var(--color-body-mid); }
+
+  footer { background: var(--color-ink); color: var(--color-canvas-soft); padding: var(--space-3xl) 0; font-size: 16px; border-top: 1px solid var(--color-ink-mid); }
+  footer .wrap { display: flex; justify-content: space-between; gap: var(--space-xl); flex-wrap: wrap; }
+  footer span { color: var(--color-body-mid); }
+
+  @media (max-width: 900px) {
+    nav ul { display: none; }
+    h1 { font-size: 36px; } h2 { font-size: 32px; }
+    .hero { padding: var(--space-3xl) 0; }
+    .hero .wrap, .head, .contact .wrap { grid-template-columns: 1fr; gap: var(--space-xl); }
+    .hero-ill { aspect-ratio: 16 / 10; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .bento, .projects, .faq { grid-template-columns: 1fr; }
+    .card.dark { grid-row: auto; }
+    .card.wide { flex-direction: column; align-items: flex-start; gap: var(--space-md); }
+    .steps { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a href="#" class="brand"><i><svg width="14" height="14" viewBox="0 0 16 16"><path d="M9 1 3 9h4l-1 6 6-8H8l1-6Z" fill="#fffefb"/></svg></i>ช่างไฟใจดี</a>
+    <ul><li><a href="#services">บริการ</a></li><li><a href="#process">ขั้นตอน</a></li><li><a href="#projects">ผลงาน</a></li><li><a href="#faq">คำถาม</a></li></ul>
+    <a href="#contact" class="btn btn-primary">ขอใบเสนอราคา</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">ช่างไฟประจำบ้านของคนนนทบุรีและปทุมธานี</div>
+      <h1>งานไฟฟ้าในบ้าน ที่คุยง่าย ปลอดภัย และจบในวันเดียว</h1>
+      <p class="lead">เดินสายไฟ ตรวจไฟรั่ว ติดตั้งโซลาร์เซลล์ และเครื่องชาร์จรถ EV โดยช่างมีใบรับรองวิชาชีพ ประเมินราคาหน้างานฟรี</p>
+      <div class="hero-actions">
+        <a href="tel:0890000000" class="btn btn-primary">โทรเลย 089-000-0000</a>
+        <a href="#" class="btn btn-tertiary">แอดไลน์ @changfaijaidee</a>
+      </div>
+      <div class="trust"><span class="badge">ประเมินราคาฟรี</span><span class="badge">รับประกันงาน 1 ปี</span><span class="badge">ซ่อมด่วน 24 ชม.</span></div>
+    </div>
+    <div class="hero-ill" aria-hidden="true">
+      <svg viewBox="0 0 400 400" fill="none">
+        <path d="M70 330V170L200 80l130 90v160z" fill="#fffefb" stroke="#201515" stroke-width="3" stroke-linejoin="round"/>
+        <rect x="110" y="220" width="70" height="110" rx="6" fill="#f8f4f0" stroke="#201515" stroke-width="3"/>
+        <rect x="225" y="200" width="70" height="60" rx="6" fill="#f8f4f0" stroke="#201515" stroke-width="3"/>
+        <path d="M200 20v60" stroke="#201515" stroke-width="3"/>
+        <circle cx="200" cy="140" r="26" fill="#ff4f00"/>
+        <path d="M204 126l-12 16h10l-4 12 12-16h-10z" fill="#fffefb"/>
+        <path d="M40 330h320" stroke="#201515" stroke-width="3" stroke-linecap="round"/>
+        <path d="M296 230h40v50" stroke="#ff4f00" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 8"/>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<section class="band-cream" id="services">
+  <div class="wrap">
+    <div class="stats">
+      <div><b>1,200+</b><span>งานที่ทำเสร็จ</span></div>
+      <div><b>12 ปี</b><span>ประสบการณ์</span></div>
+      <div><b>1 ปี</b><span>รับประกันงานติดตั้ง</span></div>
+      <div><b>30 นาที</b><span>ตอบกลับในเวลาทำการ</span></div>
+    </div>
+    <div class="head">
+      <div><div class="eyebrow">บริการ</div><h2>ครบทุกงานไฟฟ้าในบ้าน</h2></div>
+      <p>ทุกงานเริ่มจากตรวจหน้างานจริง เสนอราคาแยกรายการ ไม่มีค่าใช้จ่ายแอบแฝง</p>
+    </div>
+    <div class="bento">
+      <div class="card dark">
+        <h3>ไฟดับ ไฟช็อต เบรกเกอร์ตัด? โทรได้ 24 ชั่วโมง</h3>
+        <p>ทีมซ่อมด่วนเข้าพื้นที่ภายในเวลาที่นัด พร้อมอะไหล่พื้นฐานในรถ</p>
+        <a href="tel:0890000000" class="btn btn-primary" style="align-self:flex-start">089-000-0000</a>
+      </div>
+      <div class="card"><svg viewBox="0 0 40 40" fill="none" stroke="#201515" stroke-width="2" stroke-linecap="round"><path d="M6 20h10m8 0h10M16 14v12h8V14z"/></svg><h3>เดินสายไฟใหม่</h3><p>ทั้งหลังหรือเฉพาะจุด ตามมาตรฐานการไฟฟ้า</p></div>
+      <div class="card"><svg viewBox="0 0 40 40" fill="none" stroke="#201515" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="18" r="10"/><path d="m26 26 8 8"/></svg><h3>ตรวจระบบไฟ / หาไฟรั่ว</h3><p>หาสาเหตุค่าไฟแพงผิดปกติ แก้ตรงจุด</p></div>
+      <div class="card"><svg viewBox="0 0 40 40" fill="none" stroke="#201515" stroke-width="2" stroke-linejoin="round"><path d="M4 30h32L30 14H10z"/><path d="M7 22h26"/></svg><h3>ติดตั้งโซลาร์เซลล์</h3><p>ออกแบบตามการใช้ไฟจริง พร้อมเรื่องขออนุญาต</p></div>
+      <div class="card"><svg viewBox="0 0 40 40" fill="none" stroke="#201515" stroke-width="2" stroke-linecap="round"><rect x="8" y="6" width="16" height="28" rx="3"/><path d="M24 14h4a4 4 0 0 1 4 4v10"/></svg><h3>เครื่องชาร์จรถ EV</h3><p>Wallbox พร้อมสายแยกวงจรและกันดูดเฉพาะ</p></div>
+      <div class="card wide"><svg viewBox="0 0 40 40" fill="none" stroke="#201515" stroke-width="2" stroke-linecap="round"><rect x="8" y="6" width="24" height="28" rx="3"/><path d="M14 14h12M14 20h12M14 26h6"/></svg><h3>ขอเพิ่มขนาดมิเตอร์</h3><p>เราจัดการเอกสารและประสานการไฟฟ้าให้ทั้งหมด คุณไม่ต้องเดินเรื่องเอง</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band-light" id="process">
+  <div class="wrap">
+    <div class="eyebrow">ขั้นตอน</div>
+    <h2 style="margin-bottom:var(--space-3xl)">รู้ทุกอย่างก่อนเริ่มงาน</h2>
+    <div class="steps">
+      <div class="step"><span class="num">ขั้นที่ 1</span><h3>นัดหมาย</h3><p>โทรหรือแอดไลน์ เลือกวันที่สะดวก</p></div>
+      <div class="step"><span class="num">ขั้นที่ 2</span><h3>ตรวจหน้างาน</h3><p>ประเมินจริง ออกใบเสนอราคาแยกรายการ</p></div>
+      <div class="step"><span class="num">ขั้นที่ 3</span><h3>ลงมือทำงาน</h3><p>ทำตามแผน เก็บพื้นที่สะอาดทุกวัน</p></div>
+      <div class="step"><span class="num">ขั้นที่ 4</span><h3>ทดสอบและส่งมอบ</h3><p>ทดสอบทุกวงจร พร้อมใบรับประกัน</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band-cream" id="projects">
+  <div class="wrap">
+    <div class="eyebrow">ผลงาน</div>
+    <h2 style="margin-bottom:var(--space-3xl)">งานที่ผ่านมาใกล้บ้านคุณ</h2>
+    <div class="projects">
+      <article class="proj"><div class="ill"><svg viewBox="0 0 320 200" fill="none"><path d="M90 170V95l70-45 70 45v75z" fill="#fffefb" stroke="#201515" stroke-width="2.5"/><path d="M60 170h200" stroke="#201515" stroke-width="2.5"/><path d="M110 120h100" stroke="#ff4f00" stroke-width="3" stroke-dasharray="5 6"/></svg></div><div class="body"><span class="badge">เดินสายไฟใหม่</span><h3 style="margin-top:var(--space-md)">บ้านเดี่ยว 2 ชั้น · ปากเกร็ด</h3><p>เดินสายไฟใหม่ทั้งหลัง ใช้เวลา 5 วัน</p></div></article>
+      <article class="proj"><div class="ill"><svg viewBox="0 0 320 200" fill="none"><path d="M70 160h180l-25-60H95z" fill="#fffefb" stroke="#201515" stroke-width="2.5"/><path d="M82 130h156" stroke="#201515" stroke-width="2"/><circle cx="250" cy="55" r="20" fill="#ff4f00"/></svg></div><div class="body"><span class="badge">โซลาร์เซลล์</span><h3 style="margin-top:var(--space-md)">โซลาร์ 5 kW · ลำลูกกา</h3><p>ค่าไฟเฉลี่ยลดลงราว 45% (ข้อมูลตัวอย่าง)</p></div></article>
+      <article class="proj"><div class="ill"><svg viewBox="0 0 320 200" fill="none"><rect x="130" y="40" width="50" height="120" rx="6" fill="#fffefb" stroke="#201515" stroke-width="2.5"/><path d="M180 80h20a12 12 0 0 1 12 12v58" stroke="#201515" stroke-width="2.5"/><circle cx="155" cy="80" r="12" fill="#ff4f00"/></svg></div><div class="body"><span class="badge">เครื่องชาร์จ EV</span><h3 style="margin-top:var(--space-md)">ทาวน์โฮม 3 ชั้น · บางบัวทอง</h3><p>ติดตั้ง Wallbox 7.4 kW พร้อมสายแยกวงจร</p></div></article>
+    </div>
+  </div>
+</section>
+
+<section class="band-light" id="faq">
+  <div class="wrap">
+    <div class="eyebrow">คำถามที่พบบ่อย</div>
+    <h2 style="margin-bottom:var(--space-3xl)">เรื่องที่ลูกค้ามักถามก่อนจ้าง</h2>
+    <div class="faq">
+      <div class="card" style="background:var(--color-canvas-soft)"><h3>ประเมินราคาหน้างานมีค่าใช้จ่ายไหม</h3><p>ฟรีในพื้นที่ให้บริการ</p></div>
+      <div class="card" style="background:var(--color-canvas-soft)"><h3>รับประกันงานกี่ปี</h3><p>งานติดตั้ง 1 ปี อุปกรณ์ตามเงื่อนไขผู้ผลิต</p></div>
+      <div class="card" style="background:var(--color-canvas-soft)"><h3>ช่างมีใบรับรองหรือไม่</h3><p>ช่างทุกคนผ่านการรับรองมาตรฐานฝีมือแรงงาน</p></div>
+      <div class="card" style="background:var(--color-canvas-soft)"><h3>ชำระเงินอย่างไร</h3><p>โอนหรือเงินสด งานใหญ่แบ่งจ่ายตามงวดงาน</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="contact" id="contact">
+  <div class="wrap">
+    <div>
+      <h2>เล่าให้เราฟังว่าบ้านคุณต้องการอะไร</h2>
+      <p>ทีมงานจะโทรกลับเพื่อนัดตรวจหน้างานภายใน 30 นาทีในเวลาทำการ</p>
+      <ul><li>โทร 089-000-0000</li><li>LINE @changfaijaidee</li><li>นนทบุรี · ปทุมธานี · กรุงเทพฯ ฝั่งเหนือ</li><li>เปิดทุกวัน 08:00–20:00</li></ul>
+    </div>
+    <form>
+      <div><label for="n">ชื่อ</label><input id="n" placeholder="ชื่อของคุณ"></div>
+      <div><label for="t">เบอร์โทร</label><input id="t" type="tel" placeholder="08x-xxx-xxxx"></div>
+      <div><label for="s">ประเภทงาน</label><select id="s"><option>เดินสายไฟใหม่</option><option>ตรวจระบบไฟ / หาไฟรั่ว</option><option>ติดตั้งโซลาร์เซลล์</option><option>ติดตั้งเครื่องชาร์จรถ EV</option><option>ขอเพิ่มขนาดมิเตอร์</option><option>ซ่อมด่วน</option></select></div>
+      <div><label for="d">รายละเอียด</label><textarea id="d" rows="3" placeholder="เล่างานที่ต้องการ"></textarea></div>
+      <button class="btn btn-primary" type="button">ส่งคำขอ</button>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap"><span>© 2026 ช่างไฟใจดี (ร้านสมมติสำหรับแกลเลอรีตัวอย่าง)</span><span>089-000-0000 · @changfaijaidee</span></div>
+</footer>
+
+</body>
+</html>

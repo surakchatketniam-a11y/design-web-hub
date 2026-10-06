@@ -25,7 +25,7 @@ const FONTK = { serif: 'หัวข้อฟอนต์ serif', mono: 'ฟอ�
 
 // content-hash version for static assets, so a long browser cache can never serve a stale file
 const ver = (f) => createHash('sha1').update(readFileSync(join(ROOT, 'src', f))).digest('hex').slice(0, 8);
-const V = { css: ver('style.css'), js: ver('app.js'), preview: ver('preview.css'), layouts: ver('layouts.mjs'), mix: ver('mix.js'), compare: ver('compare.js'), prompt: ver('prompt.mjs') };
+const V = { css: ver('style.css'), js: ver('app.js'), preview: ver('preview.css'), layouts: ver('layouts.mjs'), mix: ver('mix.js'), compare: ver('compare.js'), prompt: ver('prompt.mjs'), gallery: ver('gallery.js') };
 
 const NAMES = {
   'linear.app': 'Linear', 'mistral.ai': 'Mistral AI', 'together.ai': 'Together AI', 'opencode.ai': 'OpenCode', 'x.ai': 'xAI',
@@ -123,7 +123,7 @@ const PAGE = (title, content, { desc = SITE.description, depth = 0, path = '' } 
 <a class="skip" href="#main">ข้ามไปเนื้อหา</a>
 <header class="top"><div class="wrap bar">
   <a class="logo" href="${base || './'}"><span class="mark"></span>${esc(SITE.title)}</a>
-  <nav><a class="nl-brands" href="${base || './'}#brands">แบรนด์ทั้งหมด</a><a class="nl-patterns" href="${base}patterns/">รูปแบบเลย์เอาต์</a><a class="nl-mix" href="${base}mix/">ผสมสไตล์</a><a class="nl-cmp" href="${base}compare/">เปรียบเทียบ</a><a class="nl-about" href="${base}about/">วิธีใช้</a><a class="nl-up" href="${esc(SITE.upstream)}" target="_blank" rel="noopener noreferrer">ต้นทางข้อมูล ↗</a></nav>
+  <nav><a class="nl-brands" href="${base || './'}#brands">แบรนด์ทั้งหมด</a><a class="nl-patterns" href="${base}patterns/">รูปแบบเลย์เอาต์</a><a class="nl-mix" href="${base}mix/">ผสมสไตล์</a><a class="nl-cmp" href="${base}compare/">เปรียบเทียบ</a><a class="nl-gal" href="${base}gallery/">ก่อน–หลัง</a><a class="nl-about" href="${base}about/">วิธีใช้</a><a class="nl-up" href="${esc(SITE.upstream)}" target="_blank" rel="noopener noreferrer">ต้นทางข้อมูล ↗</a></nav>
 </div></header>
 <main id="main">${content}</main>
 <footer class="foot"><div class="wrap">
@@ -354,6 +354,7 @@ function main() {
   copyFileSync(join(ROOT, 'src', 'layouts.mjs'), join(OUT, 'assets', 'layouts.js'));
   copyFileSync(join(ROOT, 'src', 'mix.js'), join(OUT, 'assets', 'mix.js'));
   copyFileSync(join(ROOT, 'src', 'compare.js'), join(OUT, 'assets', 'compare.js'));
+  copyFileSync(join(ROOT, 'src', 'gallery.js'), join(OUT, 'assets', 'gallery.js'));
   copyFileSync(join(ROOT, 'src', 'prompt.mjs'), join(OUT, 'assets', 'prompt.js'));
 
   const slugs = readdirSync(CONTENT).filter((d) => statSync(join(CONTENT, d)).isDirectory() && existsSync(join(CONTENT, d, 'DESIGN.md'))).sort();
@@ -398,7 +399,7 @@ function main() {
     const th = deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight });
     const labels = [...b.vibes.map((v) => VIBES[v]), TONE[b.tone]];
     const q = [b.name, b.slug, b.th, plain(b.description), ...labels, ...b.uses.map((u) => USES[u])].join(' ').toLowerCase();
-    return `<div class="card-wrap"><a class="card" href="b/${esc(b.slug)}/" data-vibes="${esc(b.vibes.join(' '))}" data-uses="${esc(b.uses.join(' '))}" data-tone="${b.tone}" data-corner="${b.corner}" data-q="${esc(q)}">
+    return `<div class="card-wrap"><a class="card" href="b/${esc(b.slug)}/" data-vibes="${esc(b.vibes.join(' '))}" data-uses="${esc(b.uses.join(' '))}" data-tone="${b.tone}" data-corner="${b.corner}" data-pri="${esc(css(th.primary, ''))}" data-q="${esc(q)}">
       <div class="card-top" style="background:${css(th.bg, '#fff')};color:${css(th.ink, '#111')}"><span class="card-name">${esc(b.name)}</span><span class="card-pill" style="background:${css(th.primary, '#333')};color:${css(th.onPrimary, '#fff')}">Aa</span></div>
       <div class="strip">${swatches(b.tokens.colors)}</div>
       <div class="strip">${swatches(b.tokens.colors)}</div>
@@ -414,6 +415,63 @@ function main() {
     <div class="wiz-q"><b>2. อยากให้คนรู้สึกอย่างไร <small class="muted">(ไม่บังคับ)</small></b><div class="chips" role="group" aria-label="ความรู้สึก">${Object.entries(VIBES).map(([k, l]) => `<button type="button" class="chip" data-wq="vibes" data-v="${k}" aria-pressed="false">${esc(l)}</button>`).join('')}</div></div>
     <div class="wiz-q"><b>3. สว่างหรือมืด <small class="muted">(ไม่บังคับ)</small></b><div class="chips" role="group" aria-label="โทนสี"><button type="button" class="chip" data-wq="tone" data-v="light" aria-pressed="false">โทนสว่าง</button><button type="button" class="chip" data-wq="tone" data-v="dark" aria-pressed="false">โทนมืด</button></div></div>
     <div id="wizOut" aria-live="polite" hidden></div></section>`;
+  // before/after gallery: data, screenshots (WebP) and the generated pages live in gallery-before-after/ (made outside the build); the build only lays them out
+  const GAL_DIR = join(ROOT, 'gallery-before-after');
+  let galTeaser = '', galleryPage = null;
+  if (existsSync(join(GAL_DIR, 'gallery.json'))) {
+    const G = JSON.parse(readFileSync(join(GAL_DIR, 'gallery.json'), 'utf8'));
+    const gout = join(OUT, 'gallery', G.id);
+    mkdirSync(gout, { recursive: true });
+    const webpSize = (f) => {
+      const b = readFileSync(f), t = b.toString('ascii', 12, 16);
+      if (t === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
+      if (t === 'VP8L') { const v = b.readUInt32LE(21); return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 }; }
+      return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+    };
+    const items = G.items.map((it) => {
+      const shots = {};
+      for (const [k, rel] of Object.entries(it.shots || {})) {
+        const webp = rel.replace(/\.png$/i, '.webp'), src = join(GAL_DIR, webp);
+        if (!existsSync(src)) { problems.push(`gallery: ไม่พบภาพ ${webp} (แปลง PNG เป็น WebP ก่อน)`); continue; }
+        mkdirSync(dirname(join(gout, webp)), { recursive: true });
+        copyFileSync(src, join(gout, webp));
+        shots[k] = { src: `${G.id}/${webp}`, ...webpSize(src) };
+      }
+      let html = '';
+      if (it.html && existsSync(join(GAL_DIR, it.html))) { copyFileSync(join(GAL_DIR, it.html), join(gout, it.html)); html = `${G.id}/${it.html}`; }
+      const name = it.style ? displayName(it.style) : '';
+      return { slug: it.slug, label: it.label, style: it.style || null, name, notes: it.notes || '', html, mix: it.mix_link ? '../' + it.mix_link.replace(/^\//, '') : '', shots };
+    });
+    const before = items.find((x) => !x.style), afters = items.filter((x) => x.style);
+    // prompts.md: 1st fenced block = shared brief, 2nd = "before" addition, 3rd = "after" addition; the bullets under "หมายเหตุเรื่องความโปร่งใส" are shown as-is
+    const md = existsSync(join(GAL_DIR, G.brief_file || 'prompts.md')) ? readFileSync(join(GAL_DIR, G.brief_file || 'prompts.md'), 'utf8').replace(/\r/g, '') : '';
+    const blocks = [...md.matchAll(/```\n([\s\S]*?)```/g)].map((m) => m[1].trim());
+    const brief = blocks[0] || '', fill = (t) => (t || '').replace('[โจทย์ร่วม]', brief);
+    const notes = ((md.split(/##\s*หมายเหตุเรื่องความโปร่งใส[^\n]*\n/)[1] || '').split('\n').filter((l) => /^-\s/.test(l)).map((l) => l.replace(/^-\s*/, '')));
+    if (before && afters.length) {
+      const first = afters[0], sh = (it, k) => it.shots[k];
+      galTeaser = `<section class="wrap gal-teaser" id="before-after" aria-labelledby="galH"><h2 id="galH">AI ตัวเดียวกัน โจทย์เดียวกัน ต่างกันแค่ไฟล์ DESIGN.md</h2>
+    <p class="muted">โจทย์: ${esc(G.title)} (${esc(G.business)}) ซ้ายคือสั่งแบบปกติ ขวาคือแนบไฟล์ DESIGN.md ของสไตล์ ${esc(first.name)}</p>
+    <div class="gal-cmp">${[[before, 'ก่อน: ไม่มี DESIGN.md', 'หน้าเว็บที่ AI สร้างโดยไม่มี DESIGN.md'], [first, `หลัง: แนบ DESIGN.md (${first.name})`, `หน้าเว็บที่ AI สร้างโดยแนบ DESIGN.md สไตล์ ${first.name}`]].map(([it, cap, alt]) => `<a class="gal-fig" href="gallery/"><figure><div class="gal-shot desktop fold"><img src="gallery/${esc(sh(it, 'desktop_fold').src)}" width="${sh(it, 'desktop_fold').w}" height="${sh(it, 'desktop_fold').h}" alt="${esc(alt)}" loading="lazy" decoding="async"></div><figcaption>${esc(cap)}</figcaption></figure></a>`).join('')}</div>
+    <p class="gal-more"><a class="btn primary" href="gallery/">ดูก่อน–หลังทั้งชุด · ${afters.length} สไตล์ · ดูแบบมือถือได้ →</a><span class="muted">ร้านสมมติ สร้างโดย Claude ครั้งเดียว ผลของคุณอาจต่างไป</span></p></section>`;
+      const opts = (arr, attr, on) => arr.map(([k, l], i) => `<button type="button" class="chip${i === on ? ' on' : ''}" data-${attr}="${k}" aria-pressed="${i === on}">${esc(l)}</button>`).join('');
+      const pbox = (title, text) => `<article class="pcard"><div class="phead"><h3>${esc(title)}</h3></div><pre>${esc(text)}</pre><button class="btn sm" type="button" data-copy="${esc(text)}">คัดลอกคำสั่ง</button></article>`;
+      const data = JSON.stringify({ before, afters }).replace(/</g, '\\u003c');
+      galleryPage = PAGE(`ก่อน–หลัง — ${SITE.title}`, `<section class="hero"><div class="wrap"><p class="eyebrow">ดูผลจริง · ${esc(G.title)}</p><h1>ก่อน–หลัง</h1><p class="lead">AI ตัวเดียวกัน โจทย์เดียวกัน ต่างกันแค่ว่าแนบไฟล์ DESIGN.md หรือไม่ เลือกสไตล์ ดูแบบเดสก์ท็อปหรือมือถือ แล้วเทียบกันเอง</p></div></section>
+  <section class="wrap gal" id="gal"><div class="gal-ctrl">
+    <div class="fgroup"><span class="flabel">สไตล์ที่แนบ</span><div class="chips" role="group" aria-label="สไตล์ที่แนบ">${afters.map((a, i) => `<button type="button" class="chip${i === 0 ? ' on' : ''}" data-gs="${esc(a.slug)}" aria-pressed="${i === 0}">${esc(a.name)}</button>`).join('')}</div></div>
+    <div class="fgroup"><span class="flabel">อุปกรณ์</span><div class="chips" role="group" aria-label="อุปกรณ์">${opts([['desktop', 'เดสก์ท็อป'], ['mobile', 'มือถือ']], 'gd', 0)}</div></div>
+    <div class="fgroup"><span class="flabel">มุมมอง</span><div class="chips" role="group" aria-label="มุมมอง">${opts([['fold', 'หน้าจอแรก'], ['full', 'ทั้งหน้า (เลื่อนดูในกรอบ)']], 'gv', 0)}</div></div></div>
+    <div class="gal-cmp gal-big"><figure class="gal-fig"><figcaption><b>${esc(before.label)}</b><small>${esc(before.notes)}</small></figcaption><div class="gal-shot desktop fold" id="galBeforeBox"><img id="galBeforeImg" alt="" decoding="async"></div><div class="actions">${before.html ? `<a class="btn sm" href="${esc(before.html)}" target="_blank" rel="noopener">เปิดหน้า HTML จริง ↗</a>` : ''}</div></figure>
+    <figure class="gal-fig"><figcaption><b id="galAfterLabel"></b><small id="galAfterNotes"></small></figcaption><div class="gal-shot desktop fold" id="galAfterBox"><img id="galAfterImg" alt="" decoding="async"></div><div class="actions" id="galAfterActs"></div></figure></div>
+    <p class="muted gal-lead">${esc(G.business)} · ${esc(G.title)} · สร้างเมื่อ ${esc(G.created)}</p>
+    <div class="gal-trust"><h2>ความโปร่งใส</h2><ul>${[`<b>สร้างโดย:</b> ${esc(G.generator)}`, ...notes.map(esc), 'ผลของ AI แต่ละครั้งไม่เหมือนกัน นี่คือตัวอย่างหนึ่งครั้ง ไม่ใช่การรับประกันผล', 'ร้านนี้เป็นร้านสมมติ เบอร์โทร LINE และตัวเลขทั้งหมดเป็นข้อมูลตัวอย่าง', 'ชื่อสไตล์ที่ระบุคือไฟล์ DESIGN.md ที่แนบ เป็นการวิเคราะห์เชิงแรงบันดาลใจ ไม่ใช่เว็บหรือไฟล์ทางการของแบรนด์นั้น'].map((x) => `<li>${x}</li>`).join('')}</ul></div>
+    <h2>คำสั่งที่ใช้</h2><p class="muted">ลองสั่งซ้ำกับเครื่องมือของคุณเองได้ ไฟล์ DESIGN.md และ tokens.css ของแต่ละสไตล์ดาวน์โหลดได้จากหน้าสไตล์นั้น</p>
+    <div class="pgrid">${pbox('โจทย์ร่วม (ใช้ทุกหน้า)', brief)}${pbox('ก่อน: ไม่มี DESIGN.md', fill(blocks[1]))}${pbox('หลัง: แนบ DESIGN.md + tokens.css', fill(blocks[2]))}</div></section>
+  <script type="application/json" id="galData">${data}</script><script src="../assets/gallery.js?v=${V.gallery}" defer></script>`, { depth: 1 });
+    }
+  }
+
   // curated mix recipes: same simple header as the brand cards, painted with the colors the recipe takes from its color brand
   const mbBy = Object.fromEntries(mixBrands.map((m) => [m.slug, m]));
   const recipes = `<section class="wrap recipes" id="recipes"><h2>สูตรผสมแนะนำ ${REC.length} แบบ</h2><p class="muted">คัดมาให้สำหรับธุรกิจที่พบบ่อย กดเปิดแล้วปรับต่อในหน้าผสมสไตล์ ดาวน์โหลดเป็น DESIGN.md ที่มีฟอนต์ไทยได้เลย</p><div class="rec-grid">${REC.map((r) => {
@@ -430,6 +488,7 @@ function main() {
     <p class="hero-cta"><a class="btn primary" href="mix/">✨ ผสมสไตล์ของคุณเอง</a> <a class="btn" href="patterns/">ดูรูปแบบเลย์เอาต์ 14 แบบ</a></p>
     <div class="stats"><div><b>${brands.length}</b><span>สไตล์ดีไซน์</span></div><div><b>${Object.keys(VIBES).length}</b><span>แนวความรู้สึก</span></div><div><b>${brands.filter((b) => b.format === 'tokens').length}</b><span>มี design tokens</span></div></div>
   </div></section>
+  ${galTeaser}
   ${wizard}
   ${recipes}
   <section class="wrap" id="brands">
@@ -511,6 +570,8 @@ window.addEventListener('message', (e) => { if (e.origin !== location.origin) re
 parent.postMessage({ type: 'ready' }, location.origin);
 </script></body></html>`);
 
+  if (galleryPage) { mkdirSync(join(OUT, 'gallery'), { recursive: true }); writeFileSync(join(OUT, 'gallery', 'index.html'), galleryPage); }
+
   // compare page + its data
   const fam1 = (f) => String(f || '').split(',')[0].replace(/["']/g, '').trim() || 'ฟอนต์ระบบ';
   writeFileSync(join(OUT, 'data', 'compare.json'), JSON.stringify({
@@ -537,7 +598,7 @@ parent.postMessage({ type: 'ready' }, location.origin);
 
   writeFileSync(join(OUT, 'brands.json'), JSON.stringify(brands.map((b) => ({ slug: b.slug, name: b.name, category: b.category, format: b.format, colors: Object.keys(b.tokens.colors).length })), null, 2));
   writeFileSync(join(OUT, '404.html'), PAGE('ไม่พบหน้านี้', '<section class="wrap content narrow"><h1>ไม่พบหน้านี้</h1><p><a href="/">กลับหน้าแรก</a></p></section>'));
-  const sm = ['/', '/about/', '/patterns/', '/mix/', '/compare/', ...brands.map((b) => `/b/${b.slug}/`)];
+  const sm = ['/', '/about/', '/patterns/', '/mix/', '/compare/', ...(galleryPage ? ['/gallery/'] : []), ...brands.map((b) => `/b/${b.slug}/`)];
   writeFileSync(join(OUT, 'sitemap.txt'), sm.map((p) => (SITE.url || '') + p).join('\n') + '\n');
 
   const legacy = brands.filter((b) => b.format === 'legacy').map((b) => b.slug);

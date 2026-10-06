@@ -1,0 +1,65 @@
+{
+  "id": "contractor-electrical",
+  "title": "รับเหมา / ช่างไฟฟ้า",
+  "business": "ช่างไฟใจดี (ร้านสมมติ)",
+  "brief_file": "prompts.md",
+  "generator": "Claude (Anthropic) — ทุกหน้าสร้างในรอบเดียวกัน แก้หลังสร้าง 1 จุด (กริดบริการหน้า Zapier)",
+  "created": "2026-10-06",
+  "items": [
+    {
+      "slug": "before",
+      "label": "ก่อน: ไม่มี DESIGN.md",
+      "style": null,
+      "html": "before.html",
+      "shots": {
+        "desktop_fold": "shots/before-desktop-fold.png",
+        "desktop_full": "shots/before-desktop-full.png",
+        "mobile_fold": "shots/before-mobile-fold.png",
+        "mobile_full": "shots/before-mobile-full.png"
+      },
+      "notes": "ฟอนต์ Prompt, gradient น้ำเงิน-ม่วง, การ์ดมุมโค้งมีเงา, ไอคอน emoji, การ์ด 3 คอลัมน์ซ้ำหลาย section"
+    },
+    {
+      "slug": "after-renault",
+      "label": "หลัง: Renault",
+      "style": "renault",
+      "mix_link": "/mix/?c=renault&t=renault&s=renault&f=renault",
+      "html": "after-renault.html",
+      "shots": {
+        "desktop_fold": "shots/after-renault-desktop-fold.png",
+        "desktop_full": "shots/after-renault-desktop-full.png",
+        "mobile_fold": "shots/after-renault-mobile-fold.png",
+        "mobile_full": "shots/after-renault-mobile-full.png"
+      },
+      "notes": "เหลือง #ffed00 คู่ตัวอักษรดำ, แถบขาว/ดำสลับ, มุม 2px, ไทลส์เหลี่ยมพร้อมไทล์เหลืองไทล์เดียว, Inter Tight + Anuphan"
+    },
+    {
+      "slug": "after-zapier",
+      "label": "หลัง: Zapier",
+      "style": "zapier",
+      "mix_link": "/mix/?c=zapier&t=zapier&s=zapier&f=zapier",
+      "html": "after-zapier.html",
+      "shots": {
+        "desktop_fold": "shots/after-zapier-desktop-fold.png",
+        "desktop_full": "shots/after-zapier-desktop-full.png",
+        "mobile_fold": "shots/after-zapier-mobile-fold.png",
+        "mobile_full": "shots/after-zapier-mobile-full.png"
+      },
+      "notes": "พื้นครีมอุ่น, หมึกสีกาแฟ, ปุ่มส้ม #ff4f00 มุม 12px, การ์ดเข้มเด่น 1 ใบ, Inter + Anuphan"
+    },
+    {
+      "slug": "after-ibm",
+      "label": "หลัง: IBM",
+      "style": "ibm",
+      "mix_link": "/mix/?c=ibm&t=ibm&s=ibm&f=ibm",
+      "html": "after-ibm.html",
+      "shots": {
+        "desktop_fold": "shots/after-ibm-desktop-fold.png",
+        "desktop_full": "shots/after-ibm-desktop-full.png",
+        "mobile_fold": "shots/after-ibm-mobile-fold.png",
+        "mobile_full": "shots/after-ibm-mobile-full.png"
+      },
+      "notes": "มุมเหลี่ยม 0px, หัวข้อบาง 300, ไทลส์เทา #f4f4f4 คั่นเส้น 1px, ผลงานเป็นตาราง, IBM Plex Sans + IBM Plex Sans Thai"
+    }
+  ]
+}

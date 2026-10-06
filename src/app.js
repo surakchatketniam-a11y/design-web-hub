@@ -110,7 +110,15 @@
     var render = function () {
       if (!ans.uses) { wout.hidden = true; wout.innerHTML = ''; return; }
       var ranked = wcards.map(score).filter(function (x) { return has(x.card, 'uses', ans.uses) || x.s > 2; }).sort(function (a, b) { return b.s - a.s; });
-      var top = ranked.slice(0, 3);
+      // equally good matches are picked so their main colors differ (otherwise ties come out alphabetically and often look alike)
+      var rgb = function (h) { var m = /^#([0-9a-f]{6})/i.exec(h || ''); return m ? [parseInt(m[1].slice(0, 2), 16), parseInt(m[1].slice(2, 4), 16), parseInt(m[1].slice(4, 6), 16)] : null; };
+      var similar = function (a, b) { var x = rgb(a.card.getAttribute('data-pri')), y = rgb(b.card.getAttribute('data-pri')); return !!(x && y && Math.abs(x[0] - y[0]) + Math.abs(x[1] - y[1]) + Math.abs(x[2] - y[2]) < 120); };
+      var top = [];
+      if (ranked.length) {
+        var pool = ranked.filter(function (x) { return x.s >= ranked[0].s - 1; });
+        pool.forEach(function (x) { if (top.length < 3 && !top.some(function (t) { return similar(t, x); })) top.push(x); });
+        ranked.forEach(function (x) { if (top.length < 3 && top.indexOf(x) < 0) top.push(x); });
+      }
       if (!top.length) { wout.hidden = false; wout.innerHTML = '<p class="muted">ยังไม่มีสไตล์ที่ตรงกับคำตอบนี้ ลองเปลี่ยนความรู้สึกหรือโทน</p>'; return; }
       var base = wiz.querySelector('.chip[data-wq="uses"][data-v="' + ans.uses + '"]');
       var s1 = slugOf(top[0].card), s2 = slugOf((top[1] || top[0]).card), s3 = slugOf((top[2] || top[0]).card);
