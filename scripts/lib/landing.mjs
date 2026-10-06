@@ -146,7 +146,7 @@ export function renderLanding(b, theme, ctx) {
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../../assets/preview.css">
+<link rel="stylesheet" href="../../assets/preview.css?v=${esc(ctx?.v || '')}">
 <script>if (top !== self) document.documentElement.classList.add('framed');</script>
 </head>
 <body class="${theme.dark ? 'is-dark' : ''}">

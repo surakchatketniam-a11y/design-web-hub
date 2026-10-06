@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Static site generator: content/<slug>/DESIGN.md  ->  public/ (no database, no runtime server).
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, copyFileSync, rmSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +14,10 @@ const CONTENT = join(ROOT, 'content');
 const OUT = join(ROOT, 'public');
 const SITE = JSON.parse(readFileSync(join(ROOT, 'site.config.json'), 'utf8'));
 const CATS = JSON.parse(readFileSync(join(ROOT, 'categories.json'), 'utf8'));
+
+// content-hash version for static assets, so a long browser cache can never serve a stale file
+const ver = (f) => createHash('sha1').update(readFileSync(join(ROOT, 'src', f))).digest('hex').slice(0, 8);
+const V = { css: ver('style.css'), js: ver('app.js'), preview: ver('preview.css') };
 
 const NAMES = {
   'linear.app': 'Linear', 'mistral.ai': 'Mistral AI', 'together.ai': 'Together AI', 'opencode.ai': 'OpenCode', 'x.ai': 'xAI',
@@ -86,7 +91,7 @@ const PAGE = (title, content, { desc = SITE.description, depth = 0, path = '' } 
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="${base}assets/style.css">
+<link rel="stylesheet" href="${base}assets/style.css?v=${V.css}">
 </head>
 <body>
 <a class="skip" href="#main">ข้ามไปเนื้อหา</a>
@@ -99,7 +104,7 @@ const PAGE = (title, content, { desc = SITE.description, depth = 0, path = '' } 
   <p>${esc(SITE.disclaimer)}</p>
   <p>ข้อมูล DESIGN.md จาก <a href="${esc(SITE.upstream)}" target="_blank" rel="noopener noreferrer">VoltAgent/awesome-design-md</a> (MIT License) · เว็บนี้ไม่มีการเก็บข้อมูลผู้ใช้</p>
 </div></footer>
-<script src="${base}assets/app.js" defer></script>
+<script src="${base}assets/app.js?v=${V.js}" defer></script>
 </body></html>`;
 };
 
@@ -257,7 +262,7 @@ function main() {
     const dir = join(OUT, 'b', b.slug); mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
     const pd = join(OUT, 'p', b.slug); mkdirSync(pd, { recursive: true });
-    writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint }), {}));
+    writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint }), { v: V.preview }));
     const dd = join(OUT, 'd', b.slug); mkdirSync(dd, { recursive: true });
     writeFileSync(join(dd, 'DESIGN.md'), b.raw);
     writeFileSync(join(dd, 'tokens.css'), tokenCss(b));
