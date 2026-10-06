@@ -58,7 +58,7 @@ function accents(colors, primary, n = 3) {
   return out;
 }
 
-function fontFor(name) {
+export function fontFor(name) {
   const n = String(name || '').toLowerCase();
   if (/mono|courier|menlo|consolas/.test(n)) return "'JetBrains Mono', ui-monospace, monospace";
   if (/copernicus|tiempos|editorial|georgia|garamond|playfair|lyon|times|(^|[^a-z-])serif/.test(n) && !/sans/.test(n)) return "'Source Serif 4', Georgia, serif";
@@ -133,7 +133,8 @@ export function renderLanding(b, theme, ctx) {
   const specs = b.category === 'auto'
     ? [['3.2s', '0–100 km/h'], ['800 hp', 'Peak power'], ['340 km/h', 'Top speed'], ['1,380 kg', 'Dry weight']]
     : [['4.9★', 'Average rating'], ['2M+', 'Happy customers'], ['120+', 'Countries'], ['24/7', 'Support']];
-  const editorialHero = `<div class="ed" aria-hidden="true"><div class="ed-hero"><span>${esc(copy.eyebrow)}</span><b>${name}</b></div>
+  const lightPriOnDark = theme.dark && luminance(parseColor(priBg) || parseColor(theme.primary)) > 0.6;
+  const editorialHero = `<div class="ed${lightPriOnDark ? ' soft' : ''}" aria-hidden="true"><div class="ed-hero"><span>${esc(copy.eyebrow)}</span><b>${name}</b></div>
     <div class="ed-cards">${['Signature', 'Sport', 'Classic'].map((n, i) => `<div class="ed-card"><div class="ed-img" style="background:linear-gradient(${135 + i * 25}deg,color-mix(in srgb,var(--pri) ${[80, 55, 32][i]}%,var(--bg)),color-mix(in srgb,var(--pri) ${[30, 18, 8][i]}%,var(--sur)))"></div><h4>${n}</h4><p>From $${(49 + i * 20)},900</p><a class="lnk">Discover →</a></div>`).join('')}</div></div>`;
 
   const priceTier = (title, price, items, featured, cta = 'Choose plan', per = '/mo') => `<div class="tier${featured ? ' feat' : ''}">${featured ? '<em class="pill">Most popular</em>' : ''}<h3>${title}</h3><div class="price">${price}${per ? `<small>${per}</small>` : ''}</div><ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul><a class="btn ${featured ? 'btn-inv' : 'btn-pri'}">${cta}</a></div>`;

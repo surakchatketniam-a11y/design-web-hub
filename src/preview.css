@@ -75,3 +75,8 @@ h3 { font-size: 19px; font-weight: 600; line-height: 1.3; margin-bottom: 8px; }
 @media (max-width: 900px) { .grid3, .ed-cards { grid-template-columns: 1fr 1fr; } .split { grid-template-columns: 1fr; gap: 32px; } .stats .in { grid-template-columns: repeat(2, 1fr); } .fcols { grid-template-columns: 1fr 1fr; } .mock-body { grid-template-columns: 1fr; } .mock-side { display: none; } }
 @media (max-width: 620px) { .in { padding: 0 18px; } .nav nav { display: none; } .nav .in { justify-content: space-between; } .nav-cta .btn-sec { display: none; } .grid3, .ed-cards, .fcols { grid-template-columns: 1fr; } .sec { padding: 56px 0; } .hero { padding-top: 44px; } .kpis { grid-template-columns: 1fr; } .stats .in { gap: 16px; } .ed-hero { height: 240px; padding: 22px; } .btn-lg { width: 100%; } .cta { flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* dark brands whose primary is near-white: keep the editorial blocks dark instead of glaring white */
+.ed.soft .ed-hero { background: linear-gradient(120deg, var(--sur), color-mix(in srgb, var(--bg) 60%, var(--sur))); color: var(--ink); border: 1px solid var(--bd); }
+.ed.soft .ed-hero::after { opacity: .25; }
+.ed.soft .ed-img { background: linear-gradient(135deg, var(--bd), var(--sur)) !important; }

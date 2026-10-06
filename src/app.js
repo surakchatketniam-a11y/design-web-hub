@@ -59,25 +59,55 @@
     select(start >= 0 ? start : 0);
   }
 
-  // index: search + category filter (works without JS as a plain list)
+  // index: search + multi-group filters (OR within a group, AND across groups). Works as a plain list without JS.
   var grid = document.getElementById('grid');
   if (!grid) return;
   var q = document.getElementById('q'), empty = document.getElementById('empty');
+  var shown = document.getElementById('shown'), clearBtn = document.getElementById('clear');
   var cards = Array.prototype.slice.call(grid.querySelectorAll('.card'));
-  var chips = Array.prototype.slice.call(document.querySelectorAll('.chip'));
-  var cat = '';
-  function apply() {
-    var term = (q.value || '').trim().toLowerCase(), shown = 0;
-    cards.forEach(function (c) {
-      var ok = (!cat || c.dataset.cat === cat) && (!term || c.dataset.q.indexOf(term) !== -1);
-      c.hidden = !ok; if (ok) shown++;
-    });
-    empty.hidden = shown !== 0;
+  var groups = Array.prototype.slice.call(document.querySelectorAll('.fgroup'));
+  var sel = {}; groups.forEach(function (g) { sel[g.getAttribute('data-key')] = {}; });
+  var params = new URLSearchParams(location.search);
+
+  function matchGroup(card, key) {
+    var chosen = Object.keys(sel[key]);
+    if (!chosen.length) return true;
+    var have = (card.getAttribute('data-' + key) || '').split(' ');
+    return chosen.some(function (v) { return have.indexOf(v) !== -1; });
   }
-  q.addEventListener('input', apply);
-  chips.forEach(function (ch) {
-    ch.addEventListener('click', function () {
-      cat = ch.dataset.cat; chips.forEach(function (x) { x.classList.toggle('on', x === ch); }); apply();
+  function apply() {
+    var term = (q.value || '').trim().toLowerCase(), n = 0, active = !!term;
+    groups.forEach(function (g) { if (Object.keys(sel[g.getAttribute('data-key')]).length) active = true; });
+    cards.forEach(function (c) {
+      var ok = (!term || c.getAttribute('data-q').indexOf(term) !== -1) && groups.every(function (g) { return matchGroup(c, g.getAttribute('data-key')); });
+      c.hidden = !ok; if (ok) n++;
+    });
+    empty.hidden = n !== 0;
+    shown.textContent = 'แสดง ' + n + ' จาก ' + cards.length + ' สไตล์';
+    clearBtn.hidden = !active;
+    var out = new URLSearchParams();
+    if (term) out.set('q', term);
+    groups.forEach(function (g) { var k = g.getAttribute('data-key'); var v = Object.keys(sel[k]); if (v.length) out.set(k, v.join(',')); });
+    history.replaceState(null, '', location.pathname + (out.toString() ? '?' + out.toString() : '') + location.hash);
+  }
+  groups.forEach(function (g) {
+    var key = g.getAttribute('data-key');
+    Array.prototype.forEach.call(g.querySelectorAll('.chip'), function (ch) {
+      var v = ch.getAttribute('data-v');
+      if ((params.get(key) || '').split(',').indexOf(v) !== -1) { sel[key][v] = 1; ch.classList.add('on'); ch.setAttribute('aria-pressed', 'true'); }
+      ch.addEventListener('click', function () {
+        var on = !sel[key][v];
+        if (on) sel[key][v] = 1; else delete sel[key][v];
+        ch.classList.toggle('on', on); ch.setAttribute('aria-pressed', on ? 'true' : 'false'); apply();
+      });
     });
   });
+  q.value = params.get('q') || '';
+  q.addEventListener('input', apply);
+  clearBtn.addEventListener('click', function () {
+    q.value = '';
+    groups.forEach(function (g) { sel[g.getAttribute('data-key')] = {}; Array.prototype.forEach.call(g.querySelectorAll('.chip'), function (c) { c.classList.remove('on'); c.setAttribute('aria-pressed', 'false'); }); });
+    apply();
+  });
+  apply();
 })();

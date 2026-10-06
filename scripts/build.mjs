@@ -7,13 +7,18 @@ import { fileURLToPath } from 'node:url';
 import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
-import { renderLanding } from './lib/landing.mjs';
+import { renderLanding, fontFor } from './lib/landing.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT = join(ROOT, 'content');
 const OUT = join(ROOT, 'public');
 const SITE = JSON.parse(readFileSync(join(ROOT, 'site.config.json'), 'utf8'));
 const CATS = JSON.parse(readFileSync(join(ROOT, 'categories.json'), 'utf8'));
+const CUR = JSON.parse(readFileSync(join(ROOT, 'curation.json'), 'utf8'));
+const VIBES = CUR.vibes, USES = CUR.uses;
+const TONE = { light: 'โทนสว่าง', dark: 'โทนมืด', mixed: 'โทนผสม (สลับสว่าง/มืด)', mid: 'โทนกลาง' };
+const CORNER = { sharp: 'มุมเหลี่ยม', soft: 'มุมโค้งเล็กน้อย', round: 'มุมโค้งมน/พิลล์' };
+const FONTK = { serif: 'หัวข้อฟอนต์ serif', mono: 'ฟอนต์ monospace' };
 
 // content-hash version for static assets, so a long browser cache can never serve a stale file
 const ver = (f) => createHash('sha1').update(readFileSync(join(ROOT, 'src', f))).digest('hex').slice(0, 8);
@@ -72,8 +77,25 @@ function loadBrand(slug) {
   tokens.colors = colors;
   // legacy files carry no canvas token; detect an explicitly dark design from the opening text
   const head = (description + ' ' + body.slice(0, 1800)).toLowerCase();
-  const darkHint = format === 'legacy' && /(near-black|dark (theme|mode|canvas|surface|background)|immersive dark|black (canvas|background)|dark-first|dark, )/.test(head);
-  return { slug, raw, body, tokens, format, description, darkHint, name: displayName(slug), category: catOf[slug] || 'other' };
+  // "near-black" alone is ambiguous (often the TEXT color), so require it next to a surface word or an explicit dark-theme phrase
+  const darkHint = format === 'legacy' && /((near-|jet-|true |pure )?black\s+(canvas|background|surface|page)|dark[- ](theme|mode|canvas|surface|background|dominant|first)|immersive dark|black[^.]{0,30}dominant surfaces|nocturnal|a dark,\s)/.test(head);
+  const cur = CUR.brands[slug] || {};
+  const forceDark = cur.tone === 'dark';
+  const theme = deriveTheme(colors, { dark: darkHint || forceDark, forceNight: forceDark });
+  // sites that deliberately alternate dark and light sections are tagged "mixed" instead of guessing one
+  const dual = /(two[- ](canvas|mode|polarity|surface|track|parallel)|three[- ]canvas|multi-theme|dual[- ]mode|alternat(es|ing) (light|dark|black|white)|dark and light|light and dark)/.test((description + ' ' + body.slice(0, 2500)).toLowerCase());
+  const tone = cur.tone || (dual ? 'mixed' : theme.dark ? 'dark' : 'light');
+  // corner style from the primary button (fallback: median of the radius scale); unknown for legacy files
+  const tk = tokens;
+  const bk = Object.keys(tk.components).find((k) => /^button-primary|^btn-primary/.test(k) && !/pressed|hover|focus|disabled|active/.test(k)) || Object.keys(tk.components).find((k) => /button/.test(k));
+  let r = bk ? parseFloat(resolveRef(tk.components[bk].rounded, tk)) : NaN;
+  if (!Number.isFinite(r)) { const rs = Object.values(tk.rounded).map(parseFloat).filter((n) => Number.isFinite(n) && n < 500).sort((a, b2) => a - b2); r = rs.length ? rs[Math.floor(rs.length / 2)] : NaN; }
+  const corner = !Number.isFinite(r) ? '' : r <= 4 ? 'sharp' : r < 16 ? 'soft' : 'round';
+  const tyDisplay = Object.entries(tokens.typography).filter(([, v]) => v && typeof v === 'object').sort((a, b2) => parseFloat(b2[1].fontSize) - parseFloat(a[1].fontSize))[0];
+  const ff = tyDisplay ? fontFor(tyDisplay[1].fontFamily) : '';
+  const fontKind = /Source Serif/.test(ff) ? 'serif' : /JetBrains/.test(ff) ? 'mono' : '';
+  return { slug, raw, body, tokens, format, description, darkHint: darkHint || forceDark, forceNight: forceDark, name: displayName(slug), category: catOf[slug] || 'other',
+    th: cur.th || '', vibes: cur.vibes || [], uses: cur.uses || [], tone, corner, fontKind };
 }
 
 /* ---------- rendering helpers ---------- */
@@ -165,9 +187,28 @@ function renderComponent(key, comp, b, theme) {
   return `<figure class="comp"><div class="comp-demo" style="background:${css(backdrop, theme.bg)}"><div class="cx cx-${kind}" style="${style}">${esc(label)}</div></div><figcaption><code>${esc(key)}</code></figcaption></figure>`;
 }
 
+const PROMPT_TYPES = [
+  { key: 'saas', title: 'หน้า landing ของเว็บผลิตภัณฑ์/บริการ', uses: ['saas', 'brand'], extra: 'ส่วนที่ต้องมี: แถบนำทาง, hero พร้อมปุ่มหลัก, จุดเด่น 3–6 ข้อ, หลักฐานทางสังคม (รีวิวหรือโลโก้ลูกค้า), ตารางราคา, FAQ และ CTA ปิดท้าย' },
+  { key: 'portfolio', title: 'พอร์ตโฟลิโอ / งานครีเอทีฟ', uses: ['portfolio'], extra: 'ส่วนที่ต้องมี: แนะนำตัว, ผลงานเด่นแบบกริด (เน้นภาพ), เกี่ยวกับฉัน, ช่องทางติดต่อ' },
+  { key: 'shop', title: 'ร้านค้า / หน้าสินค้า', uses: ['shop'], extra: 'ส่วนที่ต้องมี: หน้าแรกพร้อมสินค้าแนะนำ, รายการสินค้าแบบการ์ดพร้อมตัวกรอง, หน้ารายละเอียดสินค้า, ตะกร้า' },
+  { key: 'media', title: 'บล็อก / เว็บข่าว', uses: ['media'], extra: 'ส่วนที่ต้องมี: หน้าแรกรวมบทความเด่น, หน้าอ่านบทความ (ความกว้างบรรทัดอ่านสบายตา), หมวดหมู่, ช่องสมัครรับข่าว' },
+  { key: 'tool', title: 'แดชบอร์ด / เครื่องมือภายใน', uses: ['tool', 'docs', 'fin'], extra: 'ส่วนที่ต้องมี: sidebar, การ์ดสรุปตัวเลข, ตารางข้อมูลพร้อมค้นหา/กรอง, ฟอร์ม, ป้ายสถานะ' }
+];
+const promptText = (name, t) => `ฉันกำลังสร้าง${t.title} ช่วยออกแบบและเขียนโค้ดตามระบบดีไซน์ในไฟล์ DESIGN.md และ tokens.css ที่วางไว้ที่รากโปรเจกต์
+
+เนื้อหาของฉัน: [ใส่ชื่อเว็บ ธุรกิจ และสิ่งที่อยากสื่อ]
+${t.extra}
+
+กติกา:
+1. ยึดสี ฟอนต์ รัศมีมุม ระยะห่าง และคอมโพเนนต์ตาม DESIGN.md อย่างเคร่งครัด ห้ามเพิ่มสีหรือสไตล์ที่ไม่มีในไฟล์ (ใช้ค่าจาก tokens.css)
+2. อ่านส่วน Do's and Don'ts ให้ครบและทำตาม
+3. ใช้ชื่อ โลโก้ และข้อความของฉันเอง — ห้ามใช้ชื่อหรือโลโก้ของ ${name}
+4. รองรับมือถือ และใช้ HTML ที่เข้าถึงได้ง่าย (semantic tags, คอนทราสต์ผ่านเกณฑ์)
+5. ใช้ Tailwind CSS (หรือ CSS ธรรมดา) แล้วสรุปสั้นๆ ว่าตัดสินใจเรื่องดีไซน์อะไรไปบ้าง`;
+
 function renderBrandPage(b, siblings) {
   const t = b.tokens;
-  const theme = deriveTheme(t.colors, { dark: b.darkHint });
+  const theme = deriveTheme(t.colors, { dark: b.darkHint, forceNight: b.forceNight });
   const cat = CATS[b.category]?.label || 'อื่น ๆ';
   const stageVars = `--bg:${css(theme.bg, '#fff')};--ink:${css(theme.ink, '#111')};--mute:${css(theme.mute, '#666')};--pri:${css(theme.primary, '#333')};--onpri:${css(theme.onPrimary, '#fff')};--sur:${css(theme.surface, '#f5f5f5')};--bd:${css(theme.border, '#ddd')}`;
 
@@ -210,8 +251,18 @@ function renderBrandPage(b, siblings) {
   const idx = siblings.findIndex((s) => s.slug === b.slug);
   const prev = siblings[(idx - 1 + siblings.length) % siblings.length], next = siblings[(idx + 1) % siblings.length];
 
+  const sortedPrompts = [...PROMPT_TYPES].sort((a, c) => (c.uses.some((u) => b.uses.includes(u)) ? 1 : 0) - (a.uses.some((u) => b.uses.includes(u)) ? 1 : 0));
+  const aiHtml = `<div class="tips"><b>เคล็ดลับให้ AI ทำตามสไตล์ได้แม่นขึ้น</b><ul>
+      <li>วาง <code>DESIGN.md</code> และ <code>tokens.css</code> ไว้ในโปรเจกต์ <u>ก่อน</u> เริ่มสั่ง</li>
+      <li>สั่งทีละส่วน (เช่น hero ก่อน) แล้วค่อยต่อ จะคุมผลลัพธ์ง่ายกว่าสั่งทั้งหน้าครั้งเดียว</li>
+      <li>ถ้า AI ใช้สีเพี้ยน ให้บอกว่า “ใช้เฉพาะ <code>var(--color-…)</code> จาก tokens.css”</li>
+      <li>ใช้เป็นแรงบันดาลใจ ไม่ใช่การลอก: เปลี่ยนชื่อ โลโก้ ภาพ และข้อความเป็นของคุณ เพื่อให้เว็บมีเอกลักษณ์ของตัวเอง</li></ul></div>
+    <div class="pgrid">${sortedPrompts.map((t) => { const rec = t.uses.some((u) => b.uses.includes(u)); const txt = promptText(b.name, t);
+      return `<article class="pcard"><div class="phead"><h3>${esc(t.title)}</h3>${rec ? '<em class="rec">เหมาะกับสไตล์นี้</em>' : ''}</div><pre>${esc(txt)}</pre><button class="btn sm" data-copy="${esc(txt)}">คัดลอกคำสั่ง</button></article>`; }).join('')}</div>`;
+
   const tabDefs = [
     { id: 'colors', label: 'สี', count: colorEntries.length, html: `<p class="muted">คลิกที่สีเพื่อคัดลอกค่า</p>${palette}` },
+    { id: 'ai', label: 'คำสั่งให้ AI', count: 0, html: aiHtml },
     typo && { id: 'type', label: 'ตัวอักษร', count: tyEntries.length, html: typo },
     shapes && { id: 'shapes', label: 'รูปทรงและระยะห่าง', count: 0, html: shapes },
     compHtml && { id: 'comps', label: 'คอมโพเนนต์', count: comps.length, html: compHtml },
@@ -219,9 +270,12 @@ function renderBrandPage(b, siblings) {
   ].filter(Boolean);
 
   const html = `<section class="hero-b"><div class="wrap">
-    <p class="crumb"><a href="../../">หน้าแรก</a> / ${esc(cat)}</p>
+    <p class="crumb"><a href="../../">หน้าแรก</a> / ${esc(b.name)}</p>
     <h1>${esc(b.name)}</h1>
-    <p class="lead">${esc(firstSentence(b.description, 320))}</p>
+    <div class="tagrow">${[...b.vibes.map((v) => `<span class="tag vibe">${esc(VIBES[v])}</span>`), `<span class="tag">${TONE[b.tone]}</span>`, b.corner ? `<span class="tag">${CORNER[b.corner]}</span>` : '', b.fontKind ? `<span class="tag">${FONTK[b.fontKind]}</span>` : ''].join('')}</div>
+    <p class="lead">${esc(b.th || firstSentence(b.description, 320))}</p>
+    ${b.uses.length ? `<p class="uses"><b>เหมาะกับ:</b> ${b.uses.map((u) => esc(USES[u])).join(' · ')}</p>` : ''}
+    ${b.th ? `<details class="orig"><summary>ดูคำอธิบายต้นฉบับ (อังกฤษ)</summary><p>${esc(plain(b.description))}</p></details>` : ''}
     <div class="actions">
       <a class="btn primary" href="../../d/${esc(b.slug)}/DESIGN.md" download="DESIGN.md">⬇ ดาวน์โหลด DESIGN.md</a>
       <button class="btn" data-fetchcopy="../../d/${esc(b.slug)}/DESIGN.md">คัดลอกเนื้อหา</button>
@@ -267,7 +321,7 @@ function main() {
     const dir = join(OUT, 'b', b.slug); mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
     const pd = join(OUT, 'p', b.slug); mkdirSync(pd, { recursive: true });
-    writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint }), { v: V.preview }));
+    writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight }), { v: V.preview }));
     const dd = join(OUT, 'd', b.slug); mkdirSync(dd, { recursive: true });
     writeFileSync(join(dd, 'DESIGN.md'), b.raw);
     writeFileSync(join(dd, 'tokens.css'), tokenCss(b));
@@ -275,23 +329,35 @@ function main() {
   }
 
   // index
-  const catChips = Object.entries(CATS).map(([k, v]) => `<button class="chip" data-cat="${esc(k)}">${esc(v.label)} <span>${brands.filter((b) => b.category === k).length}</span></button>`).join('');
+  const count = (fn) => brands.filter(fn).length;
+  const chip = (key, v, label, n) => `<button class="chip" data-v="${esc(v)}" aria-pressed="false">${esc(label)} <span>${n}</span></button>`;
+  const group = (key, label, items) => `<div class="fgroup" data-key="${key}"><span class="flabel">${label}</span><div class="chips">${items.join('')}</div></div>`;
+  const filters = [
+    group('vibes', 'ความรู้สึก', Object.entries(VIBES).map(([k, l]) => chip('vibes', k, l, count((x) => x.vibes.includes(k))))),
+    group('uses', 'เหมาะกับ', Object.entries(USES).map(([k, l]) => chip('uses', k, l, count((x) => x.uses.includes(k))))),
+    group('tone', 'โทน', Object.entries(TONE).filter(([k]) => count((x) => x.tone === k) > 0).map(([k, l]) => chip('tone', k, l, count((x) => x.tone === k)))),
+    group('corner', 'มุม', Object.entries(CORNER).map(([k, l]) => chip('corner', k, l, count((x) => x.corner === k))))
+  ].join('');
   const cards = brands.map((b) => {
-    const th = deriveTheme(b.tokens.colors, { dark: b.darkHint });
-    return `<a class="card" href="b/${esc(b.slug)}/" data-cat="${esc(b.category)}" data-q="${esc((b.name + ' ' + b.slug + ' ' + plain(b.description)).toLowerCase())}">
+    const th = deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight });
+    const labels = [...b.vibes.map((v) => VIBES[v]), TONE[b.tone]];
+    const q = [b.name, b.slug, b.th, plain(b.description), ...labels, ...b.uses.map((u) => USES[u])].join(' ').toLowerCase();
+    return `<a class="card" href="b/${esc(b.slug)}/" data-vibes="${esc(b.vibes.join(' '))}" data-uses="${esc(b.uses.join(' '))}" data-tone="${b.tone}" data-corner="${b.corner}" data-q="${esc(q)}">
       <div class="card-top" style="background:${css(th.bg, '#fff')};color:${css(th.ink, '#111')}"><span class="card-name">${esc(b.name)}</span><span class="card-pill" style="background:${css(th.primary, '#333')};color:${css(th.onPrimary, '#fff')}">Aa</span></div>
       <div class="strip">${swatches(b.tokens.colors)}</div>
-      <div class="card-body"><small>${esc(CATS[b.category]?.label || 'อื่น ๆ')}</small><p>${esc(firstSentence(b.description, 110))}</p></div></a>`;
+      <div class="card-body"><div class="mini-tags">${labels.slice(0, 3).map((l) => `<span>${esc(l)}</span>`).join('')}</div><p>${esc(b.th || firstSentence(b.description, 110))}</p></div></a>`;
   }).join('');
   const indexHtml = `<section class="hero"><div class="wrap">
-    <p class="eyebrow">แหล่งเรียนรู้ · ไม่แสวงหาผลกำไร</p>
+    <p class="eyebrow">แหล่งไอเดียดีไซน์ · ไม่แสวงหาผลกำไร</p>
     <h1>${esc(SITE.headline)}</h1>
     <p class="lead">${esc(SITE.description)}</p>
-    <div class="stats"><div><b>${brands.length}</b><span>แบรนด์</span></div><div><b>${Object.keys(CATS).length}</b><span>หมวด</span></div><div><b>${brands.filter((b) => b.format === 'tokens').length}</b><span>มี design tokens</span></div></div>
+    <div class="stats"><div><b>${brands.length}</b><span>สไตล์ดีไซน์</span></div><div><b>${Object.keys(VIBES).length}</b><span>แนวความรู้สึก</span></div><div><b>${brands.filter((b) => b.format === 'tokens').length}</b><span>มี design tokens</span></div></div>
   </div></section>
   <section class="wrap" id="brands">
-    <div class="tools"><input id="q" type="search" placeholder="ค้นหาแบรนด์ เช่น stripe, dark, finance…" aria-label="ค้นหา"><div class="chips"><button class="chip on" data-cat="">ทั้งหมด <span>${brands.length}</span></button>${catChips}</div></div>
-    <p id="empty" class="muted" hidden>ไม่พบแบรนด์ที่ตรงกับคำค้น</p>
+    <div class="tools"><input id="q" type="search" placeholder="ค้นหา เช่น มืด, อบอุ่น, ร้านค้า, stripe…" aria-label="ค้นหา">
+      <div class="filters">${filters}</div>
+      <div class="fbar"><span id="shown" class="muted" aria-live="polite"></span><button id="clear" class="btn sm" type="button" hidden>ล้างตัวกรอง</button></div></div>
+    <p id="empty" class="muted" hidden>ไม่พบสไตล์ที่ตรงกับตัวกรอง ลองลดเงื่อนไขลงหรือกด “ล้างตัวกรอง”</p>
     <div class="grid" id="grid">${cards}</div>
   </section>`;
   writeFileSync(join(OUT, 'index.html'), PAGE(SITE.title, indexHtml));
@@ -301,6 +367,8 @@ function main() {
   writeFileSync(join(OUT, 'about', 'index.html'), PAGE(`วิธีใช้ — ${SITE.title}`, `<section class="wrap content narrow"><h1>วิธีใช้</h1>
     <h2>DESIGN.md คืออะไร</h2><p>ไฟล์ markdown ธรรมดาที่บรรยายระบบดีไซน์ของเว็บ (สี ตัวอักษร ระยะห่าง คอมโพเนนต์ กฎการใช้งาน) เพื่อให้ AI ที่ช่วยเขียนโค้ดอ่านแล้วสร้าง UI ที่หน้าตาสอดคล้องกัน</p>
     <h2>ใช้งาน 3 ขั้น</h2><ol><li>เลือกแบรนด์จากหน้าแรกและดูตัวอย่าง</li><li>กด “ดาวน์โหลด DESIGN.md” แล้ววางไว้ที่รากโปรเจกต์ของคุณ</li><li>สั่ง AI เช่น “อ่าน DESIGN.md แล้วสร้างหน้า landing page ตามสไตล์นี้”</li></ol>
+    <h2>ไม่รู้จะเลือกสไตล์ไหน</h2><p>ใช้ตัวกรองหน้าแรก: เลือก <strong>ความรู้สึก</strong> ที่อยากได้ (เช่น มินิมอล อบอุ่น หรูหรา) แล้วเลือก <strong>เหมาะกับ</strong> ประเภทเว็บของคุณ จากนั้นเปิดดู 2–3 แบบเทียบกัน ป้าย “โทน” และ “มุม” คำนวณจากไฟล์ DESIGN.md โดยตรง ส่วนสรุปภาษาไทยและป้ายความรู้สึก/การใช้งานเขียนจากคำอธิบายในไฟล์ อาจไม่ตรงกับความเห็นของทุกคน</p>
+    <h2>ให้ AI สร้างเว็บให้ แต่ไม่ให้ออกมาหน้าตาเดิมๆ</h2><p>AI มักออกแบบแบบกลางๆ ถ้าไม่ได้รับข้อกำหนดที่ชัดเจน การวางไฟล์ <code>DESIGN.md</code> กับ <code>tokens.css</code> ไว้ในโปรเจกต์ แล้วสั่งตามแท็บ “คำสั่งให้ AI” ในหน้าแบรนด์ จะบังคับให้ AI ใช้สี ฟอนต์ และมุมโค้งที่คุณเลือก และควรเปลี่ยนชื่อ โลโก้ ภาพ และข้อความเป็นของคุณเสมอ</p>
     <h2>ข้อควรรู้</h2><ul><li>ไฟล์เหล่านี้เป็นการ “วิเคราะห์เชิงแรงบันดาลใจ” จากเว็บไซต์จริง ใช้เพื่อการเรียนรู้ ไม่ใช่ไฟล์ทางการของแบรนด์</li><li>หน้าตัวอย่างบนเว็บนี้เป็นหน้าทั่วไปที่นำสี ตัวอักษร และมุมโค้งของแบรนด์มาใส่ <strong>ไม่ใช่การจำลองเว็บจริงของแบรนด์นั้น</strong></li><li>ไม่ควรใช้โลโก้ ชื่อ หรือทำให้ผลงานของคุณดูเหมือนเป็นเว็บของแบรนด์นั้น</li><li>ฟอนต์บางตัวเป็นของเสียเงิน หน้าตัวอย่างจึงใช้ Inter แทน</li></ul>
     <h2>เกี่ยวกับโครงการ</h2><p>${esc(SITE.disclaimer)}</p></section>`, { depth: 1 }));
 

@@ -44,7 +44,8 @@ export function deriveTheme(colors = {}, opts = {}) {
   // legacy documents have no canvas token: use a hint from the text, else assume a white page
   const byLum = Object.values(solid).map((v) => ({ v, l: luminance(parseColor(v)) })).sort((a, b) => a.l - b.l);
   const named = pick(solid, ['canvas', 'background', 'bg', 'surface-base', 'page']);
-  const bg = named || (opts.dark && byLum.length ? byLum[0].v : '#ffffff');
+  const night = opts.dark ? pick(solid, ['canvas-night', 'canvas-dark', 'surface-canvas-dark', 'surface-night']) : null;
+  const bg = named && !(night && opts.forceNight) ? named : (night || (opts.dark && byLum.length ? byLum[0].v : '#ffffff'));
   const bgC = parseColor(bg);
   let ink = pick(solid, ['ink', 'text', 'body', 'foreground', 'on-canvas', 'text-primary']);
   if (!ink || contrast(parseColor(ink), bgC) < 4.5) ink = readableOn(bgC);
