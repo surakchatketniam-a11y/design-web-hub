@@ -92,3 +92,9 @@ input[type=search] { width:100%; max-width:480px; padding:12px 14px; border:1px 
   .st-nav span { display:none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition:none !important; scroll-behavior:auto !important; } }
+
+/* device preview (iframe) */
+.device-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 14px 0 12px; } .device-bar .btn { margin-left: auto; }
+.device-wrap { display: flex; justify-content: center; background: repeating-conic-gradient(var(--line) 0 25%, transparent 0 50%) 50% / 20px 20px; border: 1px solid var(--line); border-radius: var(--r); padding: 16px; overflow: hidden; }
+.device { width: 100%; height: min(78vh, 760px); border: 1px solid var(--line); border-radius: 10px; background: #fff; transition: width .25s ease; max-width: 100%; }
+@media (prefers-reduced-motion: reduce) { .device { transition: none; } }

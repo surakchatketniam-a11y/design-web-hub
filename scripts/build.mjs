@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
+import { renderLanding } from './lib/landing.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT = join(ROOT, 'content');
@@ -64,7 +65,10 @@ function loadBrand(slug) {
   }
   const colors = Object.fromEntries(Object.entries(tokens.colors).filter(([, v]) => typeof v === 'string'));
   tokens.colors = colors;
-  return { slug, raw, body, tokens, format, description, name: displayName(slug), category: catOf[slug] || 'other' };
+  // legacy files carry no canvas token; detect an explicitly dark design from the opening text
+  const head = (description + ' ' + body.slice(0, 1800)).toLowerCase();
+  const darkHint = format === 'legacy' && /(near-black|dark (theme|mode|canvas|surface|background)|immersive dark|black (canvas|background)|dark-first|dark, )/.test(head);
+  return { slug, raw, body, tokens, format, description, darkHint, name: displayName(slug), category: catOf[slug] || 'other' };
 }
 
 /* ---------- rendering helpers ---------- */
@@ -158,7 +162,7 @@ function renderComponent(key, comp, b, theme) {
 
 function renderBrandPage(b, siblings) {
   const t = b.tokens;
-  const theme = deriveTheme(t.colors);
+  const theme = deriveTheme(t.colors, { dark: b.darkHint });
   const cat = CATS[b.category]?.label || 'อื่น ๆ';
   const stageVars = `--bg:${css(theme.bg, '#fff')};--ink:${css(theme.ink, '#111')};--mute:${css(theme.mute, '#666')};--pri:${css(theme.primary, '#333')};--onpri:${css(theme.onPrimary, '#fff')};--sur:${css(theme.surface, '#f5f5f5')};--bd:${css(theme.border, '#ddd')}`;
 
@@ -171,16 +175,12 @@ function renderBrandPage(b, siblings) {
   const btnRad = btnKey ? css(resolveRef(t.components[btnKey].rounded, t), '8px') : '8px';
   const cardKey = Object.keys(t.components).find((k) => /card/.test(k));
   const cardRad = cardKey ? css(resolveRef(t.components[cardKey].rounded, t), '12px') : '12px';
-  const mockup = `<div class="stage" style="${stageVars}">
-    <div class="st-nav"><b>${esc(b.name)}</b><span>Product</span><span>Pricing</span><span>Docs</span><a class="st-btn" style="border-radius:${btnRad}">Get started</a></div>
-    <div class="st-hero">
-      <p class="st-eyebrow">ตัวอย่างจาก DESIGN.md</p>
-      <h2 style="${typoStyle(display, 56)}">Build something that looks like ${esc(b.name)}</h2>
-      <p class="st-sub" style="${typoStyle(body, 20)}">หน้าตัวอย่างนี้ใช้ สี ตัวอักษร และรัศมีมุม ที่ดึงจากไฟล์ DESIGN.md โดยตรง</p>
-      <div class="st-cta"><a class="st-btn" style="border-radius:${btnRad}">Primary action</a><a class="st-btn ghost" style="border-radius:${btnRad}">Secondary</a></div>
+  const previewUrl = `../../p/${esc(b.slug)}/`;
+  const mockup = `<div class="device-bar" role="group" aria-label="ขนาดหน้าจอ">
+      <button class="chip on" data-w="100%">เดสก์ท็อป</button><button class="chip" data-w="820px">แท็บเล็ต</button><button class="chip" data-w="390px">มือถือ</button>
+      <a class="btn sm" href="${previewUrl}" target="_blank" rel="noopener">เปิดเต็มหน้าจอ ↗</a>
     </div>
-    <div class="st-cards">${[1, 2, 3].map((n) => `<div class="st-card" style="border-radius:${cardRad}"><b>Feature ${n}</b><p>คำอธิบายสั้น ๆ ของฟีเจอร์ที่ ${n}</p></div>`).join('')}</div>
-  </div>`;
+    <div class="device-wrap"><iframe id="pv" class="device" src="${previewUrl}" title="ตัวอย่างหน้าเว็บสไตล์ ${esc(b.name)}" loading="lazy"></iframe></div>`;
 
   const colorEntries = Object.entries(t.colors);
   const palette = colorEntries.length ? `<div class="palette">${colorEntries.map(([k, v]) => {
@@ -218,7 +218,7 @@ function renderBrandPage(b, siblings) {
     ${b.format === 'legacy' ? '<p class="note">ไฟล์นี้เป็นรูปแบบเอกสารเก่า (ไม่มี token แบบ YAML) หน้านี้จึงแสดงสีที่ดึงจากข้อความเท่าที่อ่านได้</p>' : ''}
   </div></section>
   <div class="wrap content">
-    <section><h2>ตัวอย่างหน้าเว็บ</h2><p class="muted">สร้างอัตโนมัติจากสี ตัวอักษร และรัศมีมุมใน DESIGN.md (ฟอนต์จริงบางแบบเป็นของเสียเงิน จึงแสดงด้วย Inter แทน)</p>${mockup}</section>
+    <section><h2>ตัวอย่างหน้าเว็บ</h2><p class="muted">หน้า landing page เต็มรูปแบบที่สร้างจากสี ตัวอักษร รัศมีมุม และคอมโพเนนต์ใน DESIGN.md — ข้อความเป็นตัวอย่าง และฟอนต์เสียเงินของแบรนด์แสดงด้วยฟอนต์ใกล้เคียงแทน ลองสลับขนาดหน้าจอด้านล่าง</p>${mockup}</section>
     <section><h2>สี <span class="count">${colorEntries.length}</span></h2><p class="muted">คลิกที่สีเพื่อคัดลอกค่า</p>${palette}</section>
     ${typo ? `<section><h2>ตัวอักษร <span class="count">${tyEntries.length}</span></h2>${typo}</section>` : ''}
     ${shapes ? `<section><h2>รูปทรงและระยะห่าง</h2>${shapes}</section>` : ''}
@@ -239,6 +239,7 @@ function main() {
   mkdirSync(join(OUT, 'assets'), { recursive: true });
   copyFileSync(join(ROOT, 'src', 'style.css'), join(OUT, 'assets', 'style.css'));
   copyFileSync(join(ROOT, 'src', 'app.js'), join(OUT, 'assets', 'app.js'));
+  copyFileSync(join(ROOT, 'src', 'preview.css'), join(OUT, 'assets', 'preview.css'));
 
   const slugs = readdirSync(CONTENT).filter((d) => statSync(join(CONTENT, d)).isDirectory() && existsSync(join(CONTENT, d, 'DESIGN.md'))).sort();
   const brands = [];
@@ -255,6 +256,8 @@ function main() {
   for (const b of brands) {
     const dir = join(OUT, 'b', b.slug); mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
+    const pd = join(OUT, 'p', b.slug); mkdirSync(pd, { recursive: true });
+    writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint }), {}));
     const dd = join(OUT, 'd', b.slug); mkdirSync(dd, { recursive: true });
     writeFileSync(join(dd, 'DESIGN.md'), b.raw);
     writeFileSync(join(dd, 'tokens.css'), tokenCss(b));
@@ -264,7 +267,7 @@ function main() {
   // index
   const catChips = Object.entries(CATS).map(([k, v]) => `<button class="chip" data-cat="${esc(k)}">${esc(v.label)} <span>${brands.filter((b) => b.category === k).length}</span></button>`).join('');
   const cards = brands.map((b) => {
-    const th = deriveTheme(b.tokens.colors);
+    const th = deriveTheme(b.tokens.colors, { dark: b.darkHint });
     return `<a class="card" href="b/${esc(b.slug)}/" data-cat="${esc(b.category)}" data-q="${esc((b.name + ' ' + b.slug + ' ' + plain(b.description)).toLowerCase())}">
       <div class="card-top" style="background:${css(th.bg, '#fff')};color:${css(th.ink, '#111')}"><span class="card-name">${esc(b.name)}</span><span class="card-pill" style="background:${css(th.primary, '#333')};color:${css(th.onPrimary, '#fff')}">Aa</span></div>
       <div class="strip">${swatches(b.tokens.colors)}</div>
@@ -298,6 +301,7 @@ function main() {
 
   const legacy = brands.filter((b) => b.format === 'legacy').map((b) => b.slug);
   console.log(`✓ built ${brands.length} brands → public/`);
+  console.log(`  dark hint (legacy): ${brands.filter((x) => x.darkHint).map((x) => x.slug).join(', ') || '-'}`);
   console.log(`  tokens format: ${brands.length - legacy.length} | legacy (colors from text): ${legacy.length}${legacy.length ? ' [' + legacy.join(', ') + ']' : ''}`);
   if (problems.length) console.log('  ⚠ ' + problems.join('\n  ⚠ '));
 }

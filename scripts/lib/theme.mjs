@@ -39,9 +39,12 @@ function pick(colors, names) {
   return null;
 }
 
-export function deriveTheme(colors = {}) {
+export function deriveTheme(colors = {}, opts = {}) {
   const solid = Object.fromEntries(Object.entries(colors).filter(([, v]) => { const c = parseColor(v); return c && c.a >= 0.99; }));
-  const bg = pick(solid, ['canvas', 'background', 'bg', 'surface-base', 'page', 'white']) || '#ffffff';
+  // legacy documents have no canvas token: use a hint from the text, else assume a white page
+  const byLum = Object.values(solid).map((v) => ({ v, l: luminance(parseColor(v)) })).sort((a, b) => a.l - b.l);
+  const named = pick(solid, ['canvas', 'background', 'bg', 'surface-base', 'page']);
+  const bg = named || (opts.dark && byLum.length ? byLum[0].v : '#ffffff');
   const bgC = parseColor(bg);
   let ink = pick(solid, ['ink', 'text', 'body', 'foreground', 'on-canvas', 'text-primary']);
   if (!ink || contrast(parseColor(ink), bgC) < 4.5) ink = readableOn(bgC);
@@ -53,7 +56,8 @@ export function deriveTheme(colors = {}) {
   const primaryC = parseColor(primary);
   const onPrimary = pick(solid, ['on-primary', 'on-brand']) && contrast(parseColor(pick(solid, ['on-primary', 'on-brand'])), primaryC) >= 3
     ? pick(solid, ['on-primary', 'on-brand']) : readableOn(primaryC);
-  const surface = pick(solid, ['surface-card', 'surface-1', 'surface', 'canvas-soft', 'card', 'surface-soft']) || bg;
+  const lift = opts.dark && !named ? byLum.find((x) => x.l - luminance(bgC) > 0.008 && x.l < 0.2)?.v : null;
+  const surface = pick(solid, ['surface-card', 'surface-1', 'surface', 'canvas-soft', 'card', 'surface-soft']) || lift || bg;
   const border = pick(solid, ['hairline', 'border', 'divider', 'line']) || (luminance(bgC) > 0.5 ? '#e5e7eb' : '#333333');
   const mute = (() => {
     const m = pick(solid, ['ink-mute', 'ink-muted', 'text-muted', 'muted', 'ink-subtle']);

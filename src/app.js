@@ -24,6 +24,19 @@
     }
   });
 
+
+  // brand page: device-size toggle for the landing preview iframe
+  var pv = document.getElementById('pv');
+  if (pv) {
+    var btns = document.querySelectorAll('.device-bar .chip');
+    Array.prototype.forEach.call(btns, function (b) {
+      b.addEventListener('click', function () {
+        pv.style.width = b.getAttribute('data-w');
+        Array.prototype.forEach.call(btns, function (x) { x.classList.toggle('on', x === b); });
+      });
+    });
+  }
+
   // index: search + category filter (works without JS as a plain list)
   var grid = document.getElementById('grid');
   if (!grid) return;
