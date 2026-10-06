@@ -37,6 +37,28 @@
     });
   }
 
+
+  // brand page: tabs (without JS every panel stays visible)
+  var tabs = document.getElementById('tabs');
+  if (tabs) {
+    var tbtns = Array.prototype.slice.call(tabs.querySelectorAll('[role=tab]'));
+    var panels = Array.prototype.slice.call(tabs.querySelectorAll('[role=tabpanel]'));
+    tabs.classList.add('on');
+    var select = function (i, focus) {
+      tbtns.forEach(function (b, j) { b.setAttribute('aria-selected', j === i); b.tabIndex = j === i ? 0 : -1; panels[j].hidden = j !== i; });
+      if (focus) tbtns[i].focus();
+    };
+    tbtns.forEach(function (b, i) {
+      b.addEventListener('click', function () { select(i); history.replaceState(null, '', '#' + b.id.replace('tab-', '')); });
+      b.addEventListener('keydown', function (e) {
+        var n = e.key === 'ArrowRight' ? (i + 1) % tbtns.length : e.key === 'ArrowLeft' ? (i - 1 + tbtns.length) % tbtns.length : e.key === 'Home' ? 0 : e.key === 'End' ? tbtns.length - 1 : -1;
+        if (n >= 0) { e.preventDefault(); select(n, true); }
+      });
+    });
+    var start = tbtns.findIndex(function (b) { return '#' + b.id.replace('tab-', '') === location.hash; });
+    select(start >= 0 ? start : 0);
+  }
+
   // index: search + category filter (works without JS as a plain list)
   var grid = document.getElementById('grid');
   if (!grid) return;

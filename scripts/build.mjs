@@ -210,6 +210,14 @@ function renderBrandPage(b, siblings) {
   const idx = siblings.findIndex((s) => s.slug === b.slug);
   const prev = siblings[(idx - 1 + siblings.length) % siblings.length], next = siblings[(idx + 1) % siblings.length];
 
+  const tabDefs = [
+    { id: 'colors', label: 'สี', count: colorEntries.length, html: `<p class="muted">คลิกที่สีเพื่อคัดลอกค่า</p>${palette}` },
+    typo && { id: 'type', label: 'ตัวอักษร', count: tyEntries.length, html: typo },
+    shapes && { id: 'shapes', label: 'รูปทรงและระยะห่าง', count: 0, html: shapes },
+    compHtml && { id: 'comps', label: 'คอมโพเนนต์', count: comps.length, html: compHtml },
+    { id: 'doc', label: 'เอกสารฉบับเต็ม', count: 0, html: `<article class="prose doc-prose">${renderMarkdown(b.body)}</article>` }
+  ].filter(Boolean);
+
   const html = `<section class="hero-b"><div class="wrap">
     <p class="crumb"><a href="../../">หน้าแรก</a> / ${esc(cat)}</p>
     <h1>${esc(b.name)}</h1>
@@ -220,18 +228,15 @@ function renderBrandPage(b, siblings) {
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.css" download="${esc(b.slug)}-tokens.css">tokens.css</a>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.json" download="${esc(b.slug)}-tokens.json">tokens.json</a>
     </div>
+    <div class="prompt"><span class="muted">วางไฟล์ที่รากโปรเจกต์แล้วสั่ง AI:</span><code id="prompt">${esc(prompt)}</code><button class="btn sm" data-copy="${esc(prompt)}">คัดลอก</button></div>
     ${b.format === 'legacy' ? '<p class="note">ไฟล์นี้เป็นรูปแบบเอกสารเก่า (ไม่มี token แบบ YAML) หน้านี้จึงแสดงสีที่ดึงจากข้อความเท่าที่อ่านได้</p>' : ''}
   </div></section>
   <div class="wrap content">
     <section><h2>ตัวอย่างหน้าเว็บ</h2><p class="muted">หน้า landing page เต็มรูปแบบที่สร้างจากสี ตัวอักษร รัศมีมุม และคอมโพเนนต์ใน DESIGN.md — ข้อความเป็นตัวอย่าง และฟอนต์เสียเงินของแบรนด์แสดงด้วยฟอนต์ใกล้เคียงแทน ลองสลับขนาดหน้าจอด้านล่าง</p>${mockup}</section>
-    <section><h2>สี <span class="count">${colorEntries.length}</span></h2><p class="muted">คลิกที่สีเพื่อคัดลอกค่า</p>${palette}</section>
-    ${typo ? `<section><h2>ตัวอักษร <span class="count">${tyEntries.length}</span></h2>${typo}</section>` : ''}
-    ${shapes ? `<section><h2>รูปทรงและระยะห่าง</h2>${shapes}</section>` : ''}
-    ${compHtml ? `<section><h2>คอมโพเนนต์ <span class="count">${comps.length}</span></h2>${compHtml}</section>` : ''}
-    <section><h2>วิธีนำไปใช้กับ AI</h2><p class="muted">วางไฟล์ไว้ที่รากโปรเจกต์ แล้วสั่งตัวช่วยเขียนโค้ดของคุณ</p>
-      <div class="prompt"><code id="prompt">${esc(prompt)}</code><button class="btn sm" data-copy="${esc(prompt)}">คัดลอก</button></div></section>
-    <section><h2>เอกสารฉบับเต็ม</h2>
-      <details class="doc"><summary>เปิดอ่าน DESIGN.md ทั้งไฟล์</summary><article class="prose">${renderMarkdown(b.body)}</article></details></section>
+    <div class="tabs-wrap" id="tabs">
+      <div class="tabbar" role="tablist" aria-label="รายละเอียดดีไซน์">${tabDefs.map((d, i) => `<button role="tab" id="tab-${d.id}" aria-controls="panel-${d.id}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" class="tabbtn">${d.label}${d.count ? ` <span class="count">${d.count}</span>` : ''}</button>`).join('')}</div>
+      ${tabDefs.map((d) => `<section class="tp" role="tabpanel" id="panel-${d.id}" aria-labelledby="tab-${d.id}"><h2 class="tp-h">${d.label}</h2>${d.html}</section>`).join('')}
+    </div>
     <nav class="pager"><a href="../${esc(prev.slug)}/">← ${esc(prev.name)}</a><a href="../${esc(next.slug)}/">${esc(next.name)} →</a></nav>
   </div>`;
   return PAGE(`${b.name} — ${SITE.title}`, html, { depth: 2, desc: firstSentence(b.description, 150) });
