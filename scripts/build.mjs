@@ -7,8 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
-import { renderLanding, fontFor, categoryModel } from './lib/landing.mjs';
+import { renderLanding, fontFor, categoryModel, fontPlan, fontsUrl, thaiStack, ALL_THAI_FONTS } from './lib/landing.mjs';
 import { LAYOUTS, WIRE } from '../src/layouts.mjs';
+import { buildPrompt, TOOLS } from '../src/prompt.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT = join(ROOT, 'content');
@@ -17,13 +18,14 @@ const SITE = JSON.parse(readFileSync(join(ROOT, 'site.config.json'), 'utf8'));
 const CATS = JSON.parse(readFileSync(join(ROOT, 'categories.json'), 'utf8'));
 const CUR = JSON.parse(readFileSync(join(ROOT, 'curation.json'), 'utf8'));
 const VIBES = CUR.vibes, USES = CUR.uses;
+const REC = JSON.parse(readFileSync(join(ROOT, 'recipes.json'), 'utf8')).recipes;
 const TONE = { light: 'โทนสว่าง', dark: 'โทนมืด', mixed: 'โทนผสม (สลับสว่าง/มืด)', mid: 'โทนกลาง' };
 const CORNER = { sharp: 'มุมเหลี่ยม', soft: 'มุมโค้งเล็กน้อย', round: 'มุมโค้งมน/พิลล์' };
 const FONTK = { serif: 'หัวข้อฟอนต์ serif', mono: 'ฟอนต์ monospace' };
 
 // content-hash version for static assets, so a long browser cache can never serve a stale file
 const ver = (f) => createHash('sha1').update(readFileSync(join(ROOT, 'src', f))).digest('hex').slice(0, 8);
-const V = { css: ver('style.css'), js: ver('app.js'), preview: ver('preview.css'), layouts: ver('layouts.mjs'), mix: ver('mix.js') };
+const V = { css: ver('style.css'), js: ver('app.js'), preview: ver('preview.css'), layouts: ver('layouts.mjs'), mix: ver('mix.js'), compare: ver('compare.js'), prompt: ver('prompt.mjs') };
 
 const NAMES = {
   'linear.app': 'Linear', 'mistral.ai': 'Mistral AI', 'together.ai': 'Together AI', 'opencode.ai': 'OpenCode', 'x.ai': 'xAI',
@@ -95,7 +97,8 @@ function loadBrand(slug) {
   const tyDisplay = Object.entries(tokens.typography).filter(([, v]) => v && typeof v === 'object').sort((a, b2) => parseFloat(b2[1].fontSize) - parseFloat(a[1].fontSize))[0];
   const ff = tyDisplay ? fontFor(tyDisplay[1].fontFamily) : '';
   const fontKind = /Source Serif/.test(ff) ? 'serif' : /JetBrains/.test(ff) ? 'mono' : '';
-  return { slug, raw, body, tokens, format, description, darkHint: darkHint || forceDark, forceNight: forceDark, name: displayName(slug), category: catOf[slug] || 'other',
+  const fonts = fontPlan(tokens);
+  return { slug, raw, body, tokens, fonts, format, description, darkHint: darkHint || forceDark, forceNight: forceDark, name: displayName(slug), category: catOf[slug] || 'other',
     th: cur.th || '', vibes: cur.vibes || [], uses: cur.uses || [], tone, corner, fontKind };
 }
 
@@ -120,7 +123,7 @@ const PAGE = (title, content, { desc = SITE.description, depth = 0, path = '' } 
 <a class="skip" href="#main">ข้ามไปเนื้อหา</a>
 <header class="top"><div class="wrap bar">
   <a class="logo" href="${base || './'}"><span class="mark"></span>${esc(SITE.title)}</a>
-  <nav><a class="nl-brands" href="${base || './'}#brands">แบรนด์ทั้งหมด</a><a class="nl-patterns" href="${base}patterns/">รูปแบบเลย์เอาต์</a><a class="nl-mix" href="${base}mix/">ผสมสไตล์</a><a class="nl-about" href="${base}about/">วิธีใช้</a><a class="nl-up" href="${esc(SITE.upstream)}" target="_blank" rel="noopener noreferrer">ต้นทางข้อมูล ↗</a></nav>
+  <nav><a class="nl-brands" href="${base || './'}#brands">แบรนด์ทั้งหมด</a><a class="nl-patterns" href="${base}patterns/">รูปแบบเลย์เอาต์</a><a class="nl-mix" href="${base}mix/">ผสมสไตล์</a><a class="nl-cmp" href="${base}compare/">เปรียบเทียบ</a><a class="nl-about" href="${base}about/">วิธีใช้</a><a class="nl-up" href="${esc(SITE.upstream)}" target="_blank" rel="noopener noreferrer">ต้นทางข้อมูล ↗</a></nav>
 </div></header>
 <main id="main">${content}</main>
 <footer class="foot"><div class="wrap">
@@ -130,6 +133,8 @@ const PAGE = (title, content, { desc = SITE.description, depth = 0, path = '' } 
 <script src="${base}assets/app.js?v=${V.js}" defer></script>
 </body></html>`;
 };
+
+
 
 const swatches = (colors, n = 6) => {
   const vals = Object.values(colors).filter((v) => parseColor(v));
@@ -148,8 +153,28 @@ function tokenCss(b) {
     if (t.fontWeight) lines.push(`  --text-${k}-weight: ${css(String(t.fontWeight), 'inherit')};`);
     if (t.letterSpacing !== undefined) lines.push(`  --text-${k}-tracking: ${css(String(t.letterSpacing), 'normal')};`);
   }
+  lines.push(`  --font-display: ${b.fonts.display};`, `  --font-body: ${b.fonts.body};`, `  --font-thai-display: ${thaiStack(b.fonts.thaiDisplay)};`, `  --font-thai-body: ${thaiStack(b.fonts.thaiBody)};`);
   lines.push('}');
   return lines.join('\n') + '\n';
+}
+
+/** Thai typography section appended to the downloadable DESIGN.md (upstream files are English-only and their fonts have no Thai glyphs). */
+function thaiSection(b) {
+  const f = b.fonts, same = f.thaiDisplay === f.thaiBody;
+  return `
+
+## Thai Typography (added by DESIGN.md Hub)
+
+The fonts above have no Thai glyphs. When the page content is Thai, pair them with a free Thai font so the browser does not fall back to a system font:
+
+- Thai display / headings: **${f.thaiDisplay}**${same ? ' (also used for body text)' : `
+- Thai body text: **${f.thaiBody}**`}
+- CSS stacks: \`--font-thai-display: ${thaiStack(f.thaiDisplay)}\`${same ? '' : `, \`--font-thai-body: ${thaiStack(f.thaiBody)}\``} (see tokens.css). Put the Thai font right after the Latin font in every \`font-family\`, e.g. \`font-family: ${f.display}\`.
+- Load them from Google Fonts: \`${fontsUrl([f.thaiDisplay, f.thaiBody])}\`
+- Set \`<html lang="th">\`. Body line-height 1.7 or more (Thai tone marks need room); headings 1.3 or more, even if the Latin value above is tighter.
+- Never apply letter-spacing (positive or negative) to Thai text; ignore the tracking values above for Thai. Do not use \`text-transform: uppercase\` or italics on Thai.
+- Keep body text at 16px or larger. Thai has no spaces between words, so let the browser wrap lines (\`overflow-wrap: break-word\`) and avoid fixed-width truncation.
+`;
 }
 
 /* ---------- brand page sections ---------- */
@@ -193,19 +218,9 @@ const PROMPT_TYPES = [
   { key: 'portfolio', title: 'พอร์ตโฟลิโอ / งานครีเอทีฟ', uses: ['portfolio'], extra: 'ส่วนที่ต้องมี: แนะนำตัว, ผลงานเด่นแบบกริด (เน้นภาพ), เกี่ยวกับฉัน, ช่องทางติดต่อ' },
   { key: 'shop', title: 'ร้านค้า / หน้าสินค้า', uses: ['shop'], extra: 'ส่วนที่ต้องมี: หน้าแรกพร้อมสินค้าแนะนำ, รายการสินค้าแบบการ์ดพร้อมตัวกรอง, หน้ารายละเอียดสินค้า, ตะกร้า' },
   { key: 'media', title: 'บล็อก / เว็บข่าว', uses: ['media'], extra: 'ส่วนที่ต้องมี: หน้าแรกรวมบทความเด่น, หน้าอ่านบทความ (ความกว้างบรรทัดอ่านสบายตา), หมวดหมู่, ช่องสมัครรับข่าว' },
+  { key: 'local', title: 'เว็บธุรกิจท้องถิ่น (ร้านอาหาร คลินิก โรงเรียน ช่าง หน่วยงาน)', uses: ['food', 'health', 'edu', 'trade', 'gov'], extra: 'ส่วนที่ต้องมี: hero บอกว่าเราคือใครและอยู่ที่ไหน, บริการ/เมนูพร้อมราคา, รูปผลงานหรือบรรยากาศร้าน, รีวิวลูกค้า, เวลาทำการ แผนที่ และช่องทางติดต่อ (โทร, LINE) พร้อมปุ่มโทร/จองคิวที่กดง่ายบนมือถือ' },
   { key: 'tool', title: 'แดชบอร์ด / เครื่องมือภายใน', uses: ['tool', 'docs', 'fin'], extra: 'ส่วนที่ต้องมี: sidebar, การ์ดสรุปตัวเลข, ตารางข้อมูลพร้อมค้นหา/กรอง, ฟอร์ม, ป้ายสถานะ' }
 ];
-const promptText = (name, t) => `ฉันกำลังสร้าง${t.title} ช่วยออกแบบและเขียนโค้ดตามระบบดีไซน์ในไฟล์ DESIGN.md และ tokens.css ที่วางไว้ที่รากโปรเจกต์
-
-เนื้อหาของฉัน: [ใส่ชื่อเว็บ ธุรกิจ และสิ่งที่อยากสื่อ]
-${t.extra}
-
-กติกา:
-1. ยึดสี ฟอนต์ รัศมีมุม ระยะห่าง และคอมโพเนนต์ตาม DESIGN.md อย่างเคร่งครัด ห้ามเพิ่มสีหรือสไตล์ที่ไม่มีในไฟล์ (ใช้ค่าจาก tokens.css)
-2. อ่านส่วน Do's and Don'ts ให้ครบและทำตาม
-3. ใช้ชื่อ โลโก้ และข้อความของฉันเอง — ห้ามใช้ชื่อหรือโลโก้ของ ${name}
-4. รองรับมือถือ และใช้ HTML ที่เข้าถึงได้ง่าย (semantic tags, คอนทราสต์ผ่านเกณฑ์)
-5. ใช้ Tailwind CSS (หรือ CSS ธรรมดา) แล้วสรุปสั้นๆ ว่าตัดสินใจเรื่องดีไซน์อะไรไปบ้าง`;
 
 function listAfter(body, startRe, stopAtBlank = false) {
   const lines = body.split('\n'); const out = [];
@@ -242,6 +257,7 @@ function renderBrandPage(b, siblings) {
       <a class="btn sm" id="pvOpen" href="${previewUrl}" target="_blank" rel="noopener">เปิดเต็มหน้าจอ ↗</a>
     </div>
     <div class="layout-bar" role="group" aria-label="รูปแบบเลย์เอาต์"><span class="flabel">เลย์เอาต์</span><div class="chips">${LAYOUTS.map((l) => `<button class="chip${l.key === 'hero' ? ' on' : ''}" data-layout="${l.key}" data-desc="${esc(l.desc)}" aria-pressed="${l.key === 'hero'}">${l.n}. ${esc(l.thai)}</button>`).join('')}</div></div>
+    <div class="layout-bar lang-bar" role="group" aria-label="ภาษาของตัวอย่าง"><span class="flabel">ภาษา</span><div class="chips"><button class="chip on" data-lang="th" aria-pressed="true">ตัวอย่างภาษาไทย</button><button class="chip" data-lang="en" aria-pressed="false">English</button></div></div>
     <p class="layout-desc muted" id="layoutDesc">${esc(LAYOUTS.find((l) => l.key === 'hero').desc)} <a href="../../patterns/">ดูรูปแบบทั้ง 14 แบบ →</a></p>
     <div class="device-wrap"><iframe id="pv" class="device" src="${previewUrl}" title="ตัวอย่างการนำสีและฟอนต์ของ ${esc(b.name)} ไปใช้กับหน้าทั่วไป" loading="lazy"></iframe></div>`;
 
@@ -277,8 +293,13 @@ function renderBrandPage(b, siblings) {
       <li>สั่งทีละส่วน (เช่น hero ก่อน) แล้วค่อยต่อ จะคุมผลลัพธ์ง่ายกว่าสั่งทั้งหน้าครั้งเดียว</li>
       <li>ถ้า AI ใช้สีเพี้ยน ให้บอกว่า “ใช้เฉพาะ <code>var(--color-…)</code> จาก tokens.css”</li>
       <li>ใช้เป็นแรงบันดาลใจ ไม่ใช่การลอก: เปลี่ยนชื่อ โลโก้ ภาพ และข้อความเป็นของคุณ เพื่อให้เว็บมีเอกลักษณ์ของตัวเอง</li></ul></div>
-    <div class="pgrid">${sortedPrompts.map((t) => { const rec = t.uses.some((u) => b.uses.includes(u)); const txt = promptText(b.name, t);
-      return `<article class="pcard"><div class="phead"><h3>${esc(t.title)}</h3>${rec ? '<em class="rec">เหมาะกับสไตล์นี้</em>' : ''}</div><pre>${esc(txt)}</pre><button class="btn sm" data-copy="${esc(txt)}">คัดลอกคำสั่ง</button></article>`; }).join('')}</div>`;
+    <div class="pctl" id="pctl" data-pv="${V.prompt}"><label class="mx-f"><span>เครื่องมือ AI ที่จะใช้</span><select id="pTool">${TOOLS.map((t) => `<option value="${t.key}">${esc(t.label)}</option>`).join('')}</select></label>
+      <label class="mx-f"><span>ชื่อเว็บ / ธุรกิจของคุณ</span><input id="pName" type="text" maxlength="60" placeholder="เช่น ร้านกาแฟบ้านสวน"></label>
+      <label class="mx-f"><span>บริการหรือสินค้าหลัก</span><input id="pOffer" type="text" maxlength="120" placeholder="เช่น กาแฟคั่วเอง เบเกอรี่ เปิด 8:00–18:00"></label>
+      <label class="mx-f"><span>กลุ่มลูกค้า</span><input id="pAud" type="text" maxlength="120" placeholder="เช่น คนทำงานย่านอารีย์ นักท่องเที่ยว"></label></div>
+    <p class="muted pnote">กรอกแล้วคำสั่งด้านล่างอัปเดตให้ทันที ข้อมูลที่กรอกอยู่ในเบราว์เซอร์ของคุณเท่านั้น ไม่ถูกส่งไปไหน เหลือช่องไหนว่างก็ได้</p>
+    <div class="pgrid">${sortedPrompts.map((t) => { const rec = t.uses.some((u) => b.uses.includes(u)); const txt = buildPrompt(t, { avoid: b.name });
+      return `<article class="pcard" data-title="${esc(t.title)}" data-extra="${esc(t.extra)}" data-avoid="${esc(b.name)}"><div class="phead"><h3>${esc(t.title)}</h3>${rec ? '<em class="rec">เหมาะกับสไตล์นี้</em>' : ''}</div><pre>${esc(txt)}</pre><button class="btn sm" data-copy="${esc(txt)}">คัดลอกคำสั่ง</button></article>`; }).join('')}</div>`;
 
   const keyChars = listAfter(b.body, /key characteristics/i);
   const dos = listAfter(b.body, /^#{2,4}\s*do(?:'s)?\s*$/i), donts = listAfter(b.body, /^#{2,4}\s*don'?t(?:'s)?\s*$/i);
@@ -332,6 +353,8 @@ function main() {
   copyFileSync(join(ROOT, 'src', 'preview.css'), join(OUT, 'assets', 'preview.css'));
   copyFileSync(join(ROOT, 'src', 'layouts.mjs'), join(OUT, 'assets', 'layouts.js'));
   copyFileSync(join(ROOT, 'src', 'mix.js'), join(OUT, 'assets', 'mix.js'));
+  copyFileSync(join(ROOT, 'src', 'compare.js'), join(OUT, 'assets', 'compare.js'));
+  copyFileSync(join(ROOT, 'src', 'prompt.mjs'), join(OUT, 'assets', 'prompt.js'));
 
   const slugs = readdirSync(CONTENT).filter((d) => statSync(join(CONTENT, d)).isDirectory() && existsSync(join(CONTENT, d, 'DESIGN.md'))).sort();
   const brands = [];
@@ -356,9 +379,9 @@ function main() {
     mixBrands.push({ slug: b.slug, name: b.name, vars: Object.fromEntries((lctx.vars || '').split(';').filter(Boolean).map((p) => { const i = p.indexOf(':'); return [p.slice(2, i), p.slice(i + 1)]; })), classes: (lctx.classes || '').split(' ').filter(Boolean), hasBand: !!lctx.hasBand, tileCount: lctx.tileCount || 0, dark: !!lctx.dark, fonts: lctx.fonts || {} });
     writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
     const dd = join(OUT, 'd', b.slug); mkdirSync(dd, { recursive: true });
-    writeFileSync(join(dd, 'DESIGN.md'), b.raw);
+    writeFileSync(join(dd, 'DESIGN.md'), b.raw.replace(/\s*$/, '') + thaiSection(b));
     writeFileSync(join(dd, 'tokens.css'), tokenCss(b));
-    writeFileSync(join(dd, 'tokens.json'), JSON.stringify({ name: b.name, source: SITE.upstream, ...b.tokens }, null, 2));
+    writeFileSync(join(dd, 'tokens.json'), JSON.stringify({ name: b.name, source: SITE.upstream, ...b.tokens, fonts: { display: b.fonts.display, body: b.fonts.body, thaiDisplay: b.fonts.thaiDisplay, thaiBody: b.fonts.thaiBody, note: 'Latin fonts have no Thai glyphs: use the Thai fonts for Thai content, body line-height >= 1.7, no letter-spacing.' } }, null, 2));
   }
 
   // index
@@ -375,11 +398,31 @@ function main() {
     const th = deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight });
     const labels = [...b.vibes.map((v) => VIBES[v]), TONE[b.tone]];
     const q = [b.name, b.slug, b.th, plain(b.description), ...labels, ...b.uses.map((u) => USES[u])].join(' ').toLowerCase();
-    return `<a class="card" href="b/${esc(b.slug)}/" data-vibes="${esc(b.vibes.join(' '))}" data-uses="${esc(b.uses.join(' '))}" data-tone="${b.tone}" data-corner="${b.corner}" data-q="${esc(q)}">
+    return `<div class="card-wrap"><a class="card" href="b/${esc(b.slug)}/" data-vibes="${esc(b.vibes.join(' '))}" data-uses="${esc(b.uses.join(' '))}" data-tone="${b.tone}" data-corner="${b.corner}" data-q="${esc(q)}">
       <div class="card-top" style="background:${css(th.bg, '#fff')};color:${css(th.ink, '#111')}"><span class="card-name">${esc(b.name)}</span><span class="card-pill" style="background:${css(th.primary, '#333')};color:${css(th.onPrimary, '#fff')}">Aa</span></div>
       <div class="strip">${swatches(b.tokens.colors)}</div>
-      <div class="card-body"><div class="mini-tags">${labels.slice(0, 3).map((l) => `<span>${esc(l)}</span>`).join('')}</div><p>${esc(b.th || firstSentence(b.description, 110))}</p></div></a>`;
+      <div class="strip">${swatches(b.tokens.colors)}</div>
+      <div class="card-body"><div class="mini-tags">${labels.slice(0, 3).map((l) => `<span>${esc(l)}</span>`).join('')}</div><p>${esc(b.th || firstSentence(b.description, 110))}</p></div></a><button type="button" class="cmp-btn" data-cmp="${esc(b.slug)}" data-name="${esc(b.name)}" aria-pressed="false" aria-label="เพิ่ม ${esc(b.name)} เข้าเปรียบเทียบ">+ เทียบ</button></div>`;
   }).join('');
+  // 3-question style finder (answers are matched against the cards' data attributes in the browser)
+  const WIZ = [
+    ['food', 'ร้านอาหาร / คาเฟ่', 'consumer', 'full-hero'], ['health', 'คลินิก / สุขภาพ', 'other', 'single'], ['shop', 'ร้านค้าออนไลน์', 'consumer', 'card-grid'], ['edu', 'โรงเรียน / คอร์ส', 'other', 'z-pattern'],
+    ['trade', 'รับเหมา / ช่าง', 'other', 'sticky-footer'], ['gov', 'หน่วยงาน / องค์กร', 'other', 'f-pattern'], ['portfolio', 'พอร์ตโฟลิโอ', 'consumer', 'masonry'], ['saas', 'SaaS / เทค', 'dev', 'hero']
+  ];
+  const wizard = `<section class="wrap wiz" id="wizard" aria-labelledby="wizH"><h2 id="wizH">ไม่รู้จะเริ่มจากไหน? ตอบ 3 ข้อ แล้วเราแนะนำให้</h2>
+    <div class="wiz-q"><b>1. เว็บของคุณคืออะไร</b><div class="chips" role="group" aria-label="ประเภทเว็บ">${WIZ.map(([k, l, c, ly]) => `<button type="button" class="chip" data-wq="uses" data-v="${k}" data-cat="${c}" data-l="${ly}" aria-pressed="false">${esc(l)}</button>`).join('')}</div></div>
+    <div class="wiz-q"><b>2. อยากให้คนรู้สึกอย่างไร <small class="muted">(ไม่บังคับ)</small></b><div class="chips" role="group" aria-label="ความรู้สึก">${Object.entries(VIBES).map(([k, l]) => `<button type="button" class="chip" data-wq="vibes" data-v="${k}" aria-pressed="false">${esc(l)}</button>`).join('')}</div></div>
+    <div class="wiz-q"><b>3. สว่างหรือมืด <small class="muted">(ไม่บังคับ)</small></b><div class="chips" role="group" aria-label="โทนสี"><button type="button" class="chip" data-wq="tone" data-v="light" aria-pressed="false">โทนสว่าง</button><button type="button" class="chip" data-wq="tone" data-v="dark" aria-pressed="false">โทนมืด</button></div></div>
+    <div id="wizOut" aria-live="polite" hidden></div></section>`;
+  // curated mix recipes: same simple header as the brand cards, painted with the colors the recipe takes from its color brand
+  const mbBy = Object.fromEntries(mixBrands.map((m) => [m.slug, m]));
+  const recipes = `<section class="wrap recipes" id="recipes"><h2>สูตรผสมแนะนำ ${REC.length} แบบ</h2><p class="muted">คัดมาให้สำหรับธุรกิจที่พบบ่อย กดเปิดแล้วปรับต่อในหน้าผสมสไตล์ ดาวน์โหลดเป็น DESIGN.md ที่มีฟอนต์ไทยได้เลย</p><div class="rec-grid">${REC.map((r) => {
+    for (const k of ['c', 't', 's', 'f']) if (!mbBy[r[k]]) problems.push(`recipes.json: ไม่พบแบรนด์ ${r[k]} ในสูตร ${r.id}`);
+    if (!['c', 't', 's', 'f'].every((k) => mbBy[r[k]])) return '';
+    const v = mbBy[r.c].vars, nm = (k) => esc(mbBy[k].name);
+    const strip = ['bg', 'pri', 'band1', 'soft1', 'a1', 'a2'].map((k) => `<i style="background:${css(v[k], '#ccc')}"></i>`).join('');
+    return `<a class="card rec-card" href="mix/?c=${esc(r.c)}&t=${esc(r.t)}&s=${esc(r.s)}&f=${esc(r.f)}&cat=${esc(r.cat)}&l=${esc(r.l)}"><div class="card-top" style="background:${css(v.bg, '#fff')};color:${css(v.ink, '#111')}"><span class="card-name">${esc(r.name)}</span><span class="card-pill" style="background:${css(v.pri, '#333')};color:${css(v.onpri, '#fff')}">Aa</span></div><div class="strip">${strip}</div><div class="card-body"><div class="mini-tags"><span>${esc(r.for)}</span></div><p>${esc(r.desc)}</p><p class="rec-src">สี ${nm(r.c)} · ตัวอักษร ${nm(r.t)} · รูปทรง ${nm(r.s)} · ความรู้สึก ${nm(r.f)}</p></div></a>`;
+  }).join('')}</div></section>`;
   const indexHtml = `<section class="hero"><div class="wrap">
     <p class="eyebrow">แหล่งไอเดียดีไซน์ · ไม่แสวงหาผลกำไร</p>
     <h1>${esc(SITE.headline)}</h1>
@@ -387,6 +430,8 @@ function main() {
     <p class="hero-cta"><a class="btn primary" href="mix/">✨ ผสมสไตล์ของคุณเอง</a> <a class="btn" href="patterns/">ดูรูปแบบเลย์เอาต์ 14 แบบ</a></p>
     <div class="stats"><div><b>${brands.length}</b><span>สไตล์ดีไซน์</span></div><div><b>${Object.keys(VIBES).length}</b><span>แนวความรู้สึก</span></div><div><b>${brands.filter((b) => b.format === 'tokens').length}</b><span>มี design tokens</span></div></div>
   </div></section>
+  ${wizard}
+  ${recipes}
   <section class="wrap" id="brands">
     <div class="tools"><input id="q" type="search" placeholder="ค้นหา เช่น มืด, อบอุ่น, ร้านค้า, stripe…" aria-label="ค้นหา">
       <div class="filters">${filters}</div>
@@ -403,7 +448,7 @@ function main() {
     <h2>ใช้งาน 3 ขั้น</h2><ol><li>เลือกแบรนด์จากหน้าแรกและดูตัวอย่าง</li><li>กด “ดาวน์โหลด DESIGN.md” แล้ววางไว้ที่รากโปรเจกต์ของคุณ</li><li>สั่ง AI เช่น “อ่าน DESIGN.md แล้วสร้างหน้า landing page ตามสไตล์นี้”</li></ol>
     <h2>ไม่รู้จะเลือกสไตล์ไหน</h2><p>ใช้ตัวกรองหน้าแรก: เลือก <strong>ความรู้สึก</strong> ที่อยากได้ (เช่น มินิมอล อบอุ่น หรูหรา) แล้วเลือก <strong>เหมาะกับ</strong> ประเภทเว็บของคุณ จากนั้นเปิดดู 2–3 แบบเทียบกัน ป้าย “โทน” และ “มุม” คำนวณจากไฟล์ DESIGN.md โดยตรง ส่วนสรุปภาษาไทยและป้ายความรู้สึก/การใช้งานเขียนจากคำอธิบายในไฟล์ อาจไม่ตรงกับความเห็นของทุกคน</p>
     <h2>ให้ AI สร้างเว็บให้ แต่ไม่ให้ออกมาหน้าตาเดิมๆ</h2><p>AI มักออกแบบแบบกลางๆ ถ้าไม่ได้รับข้อกำหนดที่ชัดเจน การวางไฟล์ <code>DESIGN.md</code> กับ <code>tokens.css</code> ไว้ในโปรเจกต์ แล้วสั่งตามแท็บ “คำสั่งให้ AI” ในหน้าแบรนด์ จะบังคับให้ AI ใช้สี ฟอนต์ และมุมโค้งที่คุณเลือก และควรเปลี่ยนชื่อ โลโก้ ภาพ และข้อความเป็นของคุณเสมอ</p>
-    <h2>ข้อควรรู้</h2><ul><li>ไฟล์เหล่านี้เป็นการ “วิเคราะห์เชิงแรงบันดาลใจ” จากเว็บไซต์จริง ใช้เพื่อการเรียนรู้ ไม่ใช่ไฟล์ทางการของแบรนด์</li><li>หน้าตัวอย่างบนเว็บนี้เป็นหน้าทั่วไปที่นำสี ตัวอักษร และมุมโค้งของแบรนด์มาใส่ <strong>ไม่ใช่การจำลองเว็บจริงของแบรนด์นั้น</strong></li><li>ไม่ควรใช้โลโก้ ชื่อ หรือทำให้ผลงานของคุณดูเหมือนเป็นเว็บของแบรนด์นั้น</li><li>ฟอนต์บางตัวเป็นของเสียเงิน หน้าตัวอย่างจึงใช้ Inter แทน</li></ul>
+    <h2>ข้อควรรู้</h2><ul><li>ไฟล์เหล่านี้เป็นการ “วิเคราะห์เชิงแรงบันดาลใจ” จากเว็บไซต์จริง ใช้เพื่อการเรียนรู้ ไม่ใช่ไฟล์ทางการของแบรนด์</li><li>หน้าตัวอย่างบนเว็บนี้เป็นหน้าทั่วไปที่นำสี ตัวอักษร และมุมโค้งของแบรนด์มาใส่ <strong>ไม่ใช่การจำลองเว็บจริงของแบรนด์นั้น</strong></li><li>ไม่ควรใช้โลโก้ ชื่อ หรือทำให้ผลงานของคุณดูเหมือนเป็นเว็บของแบรนด์นั้น</li><li>ฟอนต์บางตัวเป็นของเสียเงิน หน้าตัวอย่างจึงใช้ Inter แทน</li><li>ฟอนต์ละตินของแบรนด์ไม่มีตัวอักษรไทย ไฟล์ที่ดาวน์โหลดจึงมีส่วน “Thai Typography” ที่ระบุฟอนต์ไทยฟรีคู่กัน (เช่น Anuphan, Noto Serif Thai, IBM Plex Sans Thai) พร้อมกฎ line-height และการไม่ใช้ letter-spacing กับภาษาไทย หน้าตัวอย่างสลับดูเป็นภาษาไทยหรือ English ได้</li></ul>
     <h2>เกี่ยวกับโครงการ</h2><p>${esc(SITE.disclaimer)}</p></section>`, { depth: 1 }));
 
   // ---- Mix page + its live-preview frame + data ----
@@ -415,16 +460,17 @@ function main() {
     layouts: LAYOUTS.map(({ key, n, th, thai }) => ({ key, n, th, thai })),
     prompts: PROMPT_TYPES.map(({ key, title, extra }) => ({ key, title, extra }))
   }));
-  const FONT_LINK = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Thai:wght@400;500;600&display=swap';
+  const FONT_LINK = fontsUrl(ALL_THAI_FONTS);
   const mixGroup = (id, label, hint) => `<div class="mx-group"><label for="mx-${id}"><b>${label}</b><small>${hint}</small></label><select id="mx-${id}"></select><div class="mx-pv" id="pv-${id}" aria-hidden="true"></div></div>`;
   writeFileSync(join(OUT, 'mix', 'index.html'), PAGE(`ผสมสไตล์ — ${SITE.title}`, `<link href="${FONT_LINK}" rel="stylesheet">
   <section class="hero"><div class="wrap"><p class="eyebrow">สร้างดีไซน์ของคุณเอง</p><h1>ผสมสไตล์</h1><p class="lead">เลือก <b>สี</b> จากแบรนด์หนึ่ง <b>ตัวอักษร</b> จากอีกแบรนด์ <b>รูปทรง</b> และ <b>ความรู้สึก</b> จากแบรนด์อื่น แล้วดูผลสดในหน้าตัวอย่าง จากนั้นดาวน์โหลดเป็น DESIGN.md ใหม่ของคุณเอง ให้ AI สร้างเว็บที่ไม่เหมือนใคร ไม่ใช่หน้าตาเดิมๆ</p></div></section>
-  <section class="wrap mix" id="mix" data-v="${V.mix}">
+  <section class="wrap mix" id="mix" data-v="${V.mix}" data-pv="${V.prompt}">
     <div class="mix-ctrl">
       <div class="mx-box"><h2>1. เว็บของคุณ</h2>
         <label class="mx-f"><span>ชื่อเว็บ (ใช้แสดงในตัวอย่าง)</span><input id="mxName" type="text" maxlength="40" placeholder="Your Brand"></label>
         <label class="mx-f"><span>ประเภทเว็บ (กำหนดข้อความตัวอย่าง)</span><select id="mxCat"></select></label>
-        <label class="mx-f"><span>เลย์เอาต์ (14 แบบ)</span><select id="mxLayout"></select></label></div>
+        <label class="mx-f"><span>เลย์เอาต์ (14 แบบ)</span><select id="mxLayout"></select></label>
+        <label class="mx-f"><span>ภาษาของตัวอย่าง</span><select id="mxLang"></select></label></div>
       <div class="mx-box"><h2>2. เลือกส่วนผสม</h2>
         ${mixGroup('colors', 'สี', 'พื้นหลัง ตัวอักษร ปุ่ม แถบเข้ม สีเน้น')}${mixGroup('type', 'ตัวอักษร', 'ฟอนต์ ขนาด น้ำหนัก ระยะห่าง')}${mixGroup('shape', 'รูปทรง', 'มุมโค้งปุ่ม/การ์ด padding')}${mixGroup('feel', 'ความรู้สึก', 'เงา gradient ตัวพิมพ์ใหญ่ การ์ดสีบล็อก')}
         <div class="mx-row"><button class="btn sm" id="mxRandom" type="button">🎲 สุ่ม</button><button class="btn sm" id="mxReset" type="button">รีเซ็ต</button><select id="mxAll" aria-label="ตั้งทุกกลุ่มเป็นแบรนด์เดียว"></select></div></div>
@@ -437,12 +483,13 @@ function main() {
       <div class="device-wrap"><iframe id="mxFrame" class="device" src="./preview/" title="ตัวอย่างหน้าเว็บจากสไตล์ที่ผสม"></iframe></div>
     </div>
   </section>
+  <button class="btn primary mx-jump" id="mxJump" type="button" aria-live="polite">👁 ดูตัวอย่าง</button>
   <section class="wrap mix-out" id="mxExport"><h2>ดาวน์โหลดผลงานของคุณ</h2>
     <p class="muted">ไฟล์ที่ได้เป็นภาษาอังกฤษแบบเดียวกับ DESIGN.md ต้นแบบ เพื่อให้ AI อ่านเข้าใจ ใช้ชื่อเว็บและสีที่คุณเลือก และระบุแหล่งแรงบันดาลใจไว้ท้ายไฟล์</p>
     <div class="actions"><button class="btn primary" id="mxDlMd" type="button">⬇ DESIGN.md</button><button class="btn" id="mxDlCss" type="button">tokens.css</button><button class="btn" id="mxDlJson" type="button">tokens.json</button><button class="btn" id="mxCopyMd" type="button">คัดลอก DESIGN.md</button></div>
     <p class="mx-src"><b>ส่วนผสมที่ใช้:</b></p><ul class="plain-list" id="mxSrc"></ul>
     <details class="doc"><summary>ดูตัวอย่างเนื้อหา DESIGN.md ที่สร้างขึ้น</summary><textarea id="mxMdText" readonly rows="18" aria-label="เนื้อหา DESIGN.md"></textarea></details>
-    <h3>คำสั่งให้ AI</h3><div class="mx-f"><select id="mxPrompt" aria-label="ประเภทเว็บ"></select></div><textarea id="mxPromptText" readonly rows="12" aria-label="คำสั่งให้ AI"></textarea><div class="actions"><button class="btn sm" id="mxCopyPrompt" type="button">คัดลอกคำสั่ง</button></div>
+    <h3>คำสั่งให้ AI</h3><div class="mx-pctl"><label class="mx-f"><span>ประเภทเว็บ</span><select id="mxPrompt"></select></label><label class="mx-f"><span>เครื่องมือ AI ที่จะใช้</span><select id="mxTool">${TOOLS.map((t) => `<option value="${t.key}">${esc(t.label)}</option>`).join('')}</select></label><label class="mx-f"><span>บริการหรือสินค้าหลัก</span><input id="mxOffer" type="text" maxlength="120" placeholder="เช่น กาแฟคั่วเอง เบเกอรี่"></label><label class="mx-f"><span>กลุ่มลูกค้า</span><input id="mxAud" type="text" maxlength="120" placeholder="เช่น คนทำงานย่านอารีย์"></label></div><p class="muted pnote">ชื่อเว็บใช้ช่อง “ชื่อเว็บ” ด้านบน กรอกแล้วคำสั่งอัปเดตทันที ข้อมูลไม่ถูกส่งไปไหน</p><textarea id="mxPromptText" readonly rows="12" aria-label="คำสั่งให้ AI"></textarea><div class="actions"><button class="btn sm" id="mxCopyPrompt" type="button">คัดลอกคำสั่ง</button></div>
     <p class="muted" style="margin-top:16px">ข้อควรรู้: การผสมสไตล์เป็นแรงบันดาลใจ ไม่ใช่การทำให้เหมือนแบรนด์ใดแบรนด์หนึ่ง ควรเปลี่ยนชื่อ โลโก้ ภาพ และข้อความเป็นของคุณเสมอ ฟอนต์ของแบรนด์ส่วนใหญ่เป็นของเสียเงิน ไฟล์ที่ได้ใช้ฟอนต์ใกล้เคียงที่หาได้ฟรี</p>
   </section>
   <script src="../assets/mix.js?v=${V.mix}" defer></script>`, { depth: 1 }));
@@ -456,13 +503,27 @@ import { renderLayout, activate } from '../../assets/layouts.js?v=${V.layouts}';
 const app = document.getElementById('app'); let cleanup = null;
 function apply(d) {
   const y = window.scrollY; if (cleanup) cleanup();
-  document.documentElement.style.cssText = d.style; document.documentElement.className = d.classes + ' framed'; document.body.className = d.dark ? 'is-dark' : '';
+  document.documentElement.style.cssText = d.style; document.documentElement.className = d.classes + ' framed'; document.documentElement.lang = d.model && d.model.lang === 'en' ? 'en' : 'th'; document.body.className = d.dark ? 'is-dark' : '';
   app.innerHTML = renderLayout(d.layout, d.model); cleanup = activate(app); window.scrollTo(0, y);
   parent.postMessage({ type: 'applied' }, location.origin);
 }
 window.addEventListener('message', (e) => { if (e.origin !== location.origin) return; const d = e.data; if (d && d.type === 'mix') apply(d); });
 parent.postMessage({ type: 'ready' }, location.origin);
 </script></body></html>`);
+
+  // compare page + its data
+  const fam1 = (f) => String(f || '').split(',')[0].replace(/["']/g, '').trim() || 'ฟอนต์ระบบ';
+  writeFileSync(join(OUT, 'data', 'compare.json'), JSON.stringify({
+    layouts: LAYOUTS.map(({ key, n, thai }) => ({ key, n, thai })),
+    brands: Object.fromEntries(brands.map((b) => [b.slug, { name: b.name, th: b.th || firstSentence(b.description, 140), tags: [...b.vibes.map((v) => VIBES[v]), TONE[b.tone], b.corner ? CORNER[b.corner] : ''].filter(Boolean),
+      colors: [...new Set(Object.values(b.tokens.colors).filter((v) => parseColor(v)).map((v) => css(v, '')).filter(Boolean))].slice(0, 8), font: fam1(b.fonts.displayName), thai: b.fonts.thaiDisplay }]))
+  }));
+  mkdirSync(join(OUT, 'compare'), { recursive: true });
+  writeFileSync(join(OUT, 'compare', 'index.html'), PAGE(`เปรียบเทียบสไตล์ — ${SITE.title}`, `<section class="hero"><div class="wrap"><p class="eyebrow">เลือกให้ชัวร์ก่อนตัดสินใจ</p><h1>เปรียบเทียบสไตล์</h1><p class="lead">วาง 2–3 สไตล์เคียงกัน ใช้โครงหน้าและภาษาเดียวกัน จะเห็นความต่างของสี ตัวอักษร และมุมโค้งชัดขึ้น ตัวอย่างเป็นหน้าทั่วไปที่ใส่ tokens ของแบรนด์ ไม่ใช่หน้าจริงของแบรนด์นั้น</p></div></section>
+  <section class="wrap cmp" id="cmp" data-v="${V.compare}"><div class="cmp-ctrl"><label class="mx-f"><span>สไตล์ที่ 1</span><select id="cmpS0"></select></label><label class="mx-f"><span>สไตล์ที่ 2</span><select id="cmpS1"></select></label><label class="mx-f"><span>สไตล์ที่ 3 (ไม่บังคับ)</span><select id="cmpS2"></select></label><label class="mx-f"><span>โครงหน้า</span><select id="cmpLayout"></select></label>
+    <div class="mx-f"><span>ภาษาของตัวอย่าง</span><div class="chips"><button class="chip on" data-lg="th" type="button" aria-pressed="true">ไทย</button><button class="chip" data-lg="en" type="button" aria-pressed="false">English</button></div></div><div class="mx-f"><span>&nbsp;</span><button class="btn sm" id="cmpShare" type="button">🔗 คัดลอกลิงก์</button></div></div>
+    <div class="cmp-cols n2" id="cmpCols"><p class="muted">กำลังโหลด…</p></div></section>
+  <script src="../assets/compare.js?v=${V.compare}" defer></script>`, { depth: 1 }));
 
   // patterns gallery
   mkdirSync(join(OUT, 'patterns'), { recursive: true });
@@ -476,7 +537,7 @@ parent.postMessage({ type: 'ready' }, location.origin);
 
   writeFileSync(join(OUT, 'brands.json'), JSON.stringify(brands.map((b) => ({ slug: b.slug, name: b.name, category: b.category, format: b.format, colors: Object.keys(b.tokens.colors).length })), null, 2));
   writeFileSync(join(OUT, '404.html'), PAGE('ไม่พบหน้านี้', '<section class="wrap content narrow"><h1>ไม่พบหน้านี้</h1><p><a href="/">กลับหน้าแรก</a></p></section>'));
-  const sm = ['/', '/about/', '/patterns/', '/mix/', ...brands.map((b) => `/b/${b.slug}/`)];
+  const sm = ['/', '/about/', '/patterns/', '/mix/', '/compare/', ...brands.map((b) => `/b/${b.slug}/`)];
   writeFileSync(join(OUT, 'sitemap.txt'), sm.map((p) => (SITE.url || '') + p).join('\n') + '\n');
 
   const legacy = brands.filter((b) => b.format === 'legacy').map((b) => b.slug);

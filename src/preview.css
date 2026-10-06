@@ -227,3 +227,9 @@ body:has(.sticky-bar) { padding-bottom: 76px; }
 
 /* article-style layouts: paragraph rhythm */
 .art p, .long p, .f-main p, .post p { margin: 0 0 1em; } .art .cv, .long .cv { margin: 4px 0 26px; } .art .byline { margin-bottom: 20px; } .long .sub { margin-bottom: 20px; }
+
+/* Thai content: tone marks need taller lines, and tracking (positive or negative) breaks Thai letter spacing */
+:lang(th) body { line-height: 1.75; }
+:lang(th) :is(h1, h2, h3, h4, h5, .page-h, blockquote, .pull, .price, .sub, .lede) { line-height: 1.4 !important; }
+:lang(th) .sub, :lang(th) .lede { line-height: 1.7 !important; }
+:lang(th) * { letter-spacing: 0 !important; word-break: normal; overflow-wrap: break-word; }

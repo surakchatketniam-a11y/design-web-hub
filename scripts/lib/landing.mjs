@@ -1,7 +1,7 @@
 // Builds a full, self-contained landing page that wears a brand's design tokens.
 // The copy is generic sample text; only colors / type / radii / spacing come from DESIGN.md.
 import { esc } from './md.mjs';
-import { parseColor, readableOn, resolveRef, luminance, contrast } from './theme.mjs';
+import { parseColor, readableOn, resolveRef, luminance, contrast, tuneStatus } from './theme.mjs';
 import { renderLayout } from '../../src/layouts.mjs';
 
 const SAFE = /^[#\w().,%\s/+*'"-]+$/;
@@ -43,6 +43,27 @@ const FAQ = [
   ['Can I cancel at any time?', 'Absolutely. There are no long-term contracts and you can cancel whenever you like.']
 ];
 
+/* Thai sample copy (same shape as the English data above). Swapped in by the layouts when the preview language is Thai. */
+const COPY_TH = {
+  ai: { eyebrow: 'ใหม่ · โมเดลล่าสุด', h1: 'AI ที่ทำงานตามแบบที่คุณคิด', sub: 'ร่าง คิดวิเคราะห์ และสร้างงานไปกับผู้ช่วยที่ออกแบบมาให้ใช้งานได้จริง ซื่อตรง และรวดเร็ว ตั้งแต่คำถามสั้นๆ ไปจนถึงโปรเจกต์ที่ซับซ้อน', cta: ['เริ่มใช้ฟรี', 'คุยกับทีมขาย'], nav: ['ผลิตภัณฑ์', 'งานวิจัย', 'ราคา', 'เอกสาร'] },
+  dev: { eyebrow: 'เปิดให้ใช้งานทั่วไปแล้ว', h1: 'ส่งงานเร็วขึ้นบนโครงสร้างที่รองรับการเติบโต', sub: 'ทุกอย่างที่ต้องใช้ในการสร้าง ปล่อย และดูแลแอปสมัยใหม่ ด้วยประสบการณ์นักพัฒนาที่ไม่เป็นอุปสรรค', cta: ['เริ่มสร้าง', 'อ่านเอกสาร'], nav: ['แพลตฟอร์ม', 'โซลูชัน', 'ราคา', 'เอกสาร'] },
+  work: { eyebrow: 'สร้างมาเพื่อทีม', h1: 'รวมงานทั้งหมดของทีมไว้ในที่เดียว', sub: 'วางแผน ติดตาม และทำงานร่วมกันโดยไม่ต้องสลับเครื่องมือ รู้ว่าใครรับผิดชอบอะไร อัปเดตแบบเรียลไทม์ ประชุมน้อยลง', cta: ['เริ่มใช้ฟรี', 'จองสาธิต'], nav: ['ผลิตภัณฑ์', 'ลูกค้า', 'ราคา', 'แหล่งความรู้'] },
+  finance: { eyebrow: 'ส่งเงินให้ง่าย', h1: 'เครื่องมือการเงินสำหรับโลกไร้พรมแดน', sub: 'ส่ง ใช้จ่าย และต่อยอดเงินด้วยค่าธรรมเนียมที่โปร่งใสและความปลอดภัยที่ไว้ใจได้ สำหรับทั้งบุคคลและธุรกิจทุกขนาด', cta: ['เปิดบัญชี', 'ดูรายละเอียด'], nav: ['บุคคล', 'ธุรกิจ', 'ราคา', 'ช่วยเหลือ'] },
+  auto: { eyebrow: 'คอลเลกชันใหม่', h1: 'วิศวกรรมเพื่อความพิเศษ', sub: 'ความแม่นยำ สมรรถนะ และความโดดเด่นในทุกรายละเอียด ค้นพบรุ่นที่ใช่และเครื่องยนต์ที่ขับเคลื่อนใจคุณ', cta: ['ดูทุกรุ่น', 'จองทดลองขับ'], nav: ['รุ่นรถ', 'ประสบการณ์', 'ประวัติศาสตร์', 'ตัวแทนจำหน่าย'] },
+  consumer: { eyebrow: 'ค้นพบ · แบ่งปัน · เพลิดเพลิน', h1: 'ค้นหาสิ่งที่อยากกลับมาดูอีก', sub: 'พื้นที่คัดสรรสำหรับสำรวจไอเดีย สินค้า และเรื่องราว สร้างมาเพื่อช่วงเวลาที่คุณอยากจดจำ', cta: ['เริ่มต้นใช้งาน', 'ดูรายการแนะนำ'], nav: ['สำรวจ', 'คอลเลกชัน', 'เรื่องราว', 'ช่วยเหลือ'] },
+  hardware: { eyebrow: 'ขอแนะนำ', h1: 'เทคโนโลยีที่ประณีตขึ้น', sub: 'ผลิตภัณฑ์ที่ออกแบบอย่างพิถีพิถัน ทำงานร่วมกันได้อย่างลงตัว ด้วยวัสดุและสมรรถนะที่คุณคาดหวัง', cta: ['ดูรายละเอียด', 'สั่งซื้อเลย'], nav: ['ผลิตภัณฑ์', 'บริการหลังการขาย', 'ธุรกิจ', 'ร้านค้า'] },
+  other: { eyebrow: 'ยินดีต้อนรับ', h1: 'วิธีที่ดีกว่าในการทำงานให้เสร็จ', sub: 'ประสบการณ์ที่ชัดเจนและตรงจุด ออกแบบรอบสิ่งที่สำคัญที่สุดสำหรับคุณ', cta: ['เริ่มต้นใช้งาน', 'ดูรายละเอียด'], nav: ['ผลิตภัณฑ์', 'เกี่ยวกับเรา', 'ราคา', 'ติดต่อ'] }
+};
+const FINE_TH = { auto: 'กำหนดรุ่นของคุณได้ในไม่กี่นาที · ตัวแทนจำหน่ายทั่วโลก', hardware: 'จัดส่งฟรี · คืนสินค้าได้ใน 14 วัน', consumer: 'สมัครฟรี · ไม่ต้องใช้บัตรเครดิต', _: 'ไม่ต้องใช้บัตรเครดิต · มีแผนฟรี' };
+const FEATURES_TH = {
+  auto: [['วิศวกรรมแม่นยำ', 'ทุกชิ้นส่วนผ่านการออกแบบ ทดสอบ และปรับแต่งจนได้ค่าความคลาดเคลื่อนที่ละเอียดที่สุด'], ['งานฝีมือสืบทอด', 'ประเพณีหลายสิบปีในทุกตะเข็บ พื้นผิว และเสียง'], ['สมรรถนะที่พิสูจน์บนสนาม', 'เทคโนโลยีจากสนามแข่งที่พร้อมใช้บนถนนจริง'], ['ปรับแต่งได้ตามใจ', 'เลือกสี วัสดุ และรายละเอียดให้เป็นรถของคุณคนเดียว'], ['นวัตกรรมยั่งยืน', 'ประสิทธิภาพและความรับผิดชอบที่อยู่ในรุ่นถัดไป'], ['บริการทั่วโลก', 'ช่างผู้เชี่ยวชาญดูแลคุณไม่ว่าขับไปที่ไหน']],
+  hardware: [['แบตเตอรี่ใช้ได้ทั้งวัน', 'ใช้งานได้ทั้งวันจนถึงดึกด้วยการชาร์จครั้งเดียว'], ['จอภาพสวยคมชัด', 'สว่าง คมชัด สีแม่นยำ ทั้งในร่มและกลางแจ้ง'], ['ทนทาน ใช้ได้นาน', 'เลือกวัสดุพรีเมียมเพื่อความทนทานและผิวสัมผัสที่คงอยู่'], ['เป็นส่วนตัวโดยออกแบบ', 'ข้อมูลของคุณอยู่บนอุปกรณ์และอยู่ในการควบคุมของคุณ'], ['ทำงานร่วมกัน', 'จับคู่อุปกรณ์ได้ทันที และทำต่อจากที่ค้างไว้ได้เลย'], ['ซ่อมฟรี', 'ซัพพอร์ตจากผู้เชี่ยวชาญและอะไหล่แท้เมื่อคุณต้องการ']],
+  consumer: [['คัดสรรเพื่อคุณ', 'ของเด็ดที่ตรงใจคุณ อัปเดตทุกวัน'], ['บันทึกสิ่งที่ชอบ', 'เก็บทุกอย่างไว้ที่เดียวแล้วกลับมาดูได้ทุกเมื่อ'], ['แบ่งปันกับเพื่อน', 'ส่งไอเดีย สร้างคอลเลกชัน และวางแผนไปด้วยกัน'], ['มีของใหม่เสมอ', 'เรื่องราวและสิ่งน่าค้นพบใหม่ๆ มาเรื่อยๆ'], ['ปลอดภัยและให้เกียรติกัน', 'เครื่องมือที่ช่วยให้ทุกคนใช้งานได้อย่างเป็นมิตร'], ['ใช้ได้ทุกอุปกรณ์', 'ลื่นไหลทั้งบนมือถือ แท็บเล็ต และเดสก์ท็อป']],
+  _: [['เร็วตั้งแต่เริ่มต้น', 'ปรับแต่งตั้งแต่การใช้งานครั้งแรก ทุกอย่างจึงรู้สึกทันใจ'], ['ปลอดภัยและเป็นส่วนตัว', 'ระบบป้องกันในตัวช่วยให้ข้อมูลเป็นของคุณตั้งแต่วันแรก'], ['ใช้ร่วมกับเครื่องมือเดิมได้', 'เชื่อมต่อแอปที่คุณใช้อยู่ได้ในไม่กี่คลิก'], ['เห็นภาพรวมชัด', 'เห็นความเคลื่อนไหวได้ในพริบตาด้วยรายงานที่เรียบง่ายและตรงไปตรงมา'], ['สร้างมาเพื่อทีม', 'แชร์ คอมเมนต์ และอัปเดตตรงกัน โดยไม่มีงานจุกจิก'], ['พัฒนาต่อเนื่อง', 'อัปเดตสม่ำเสมอตามเสียงตอบรับจากลูกค้าจริง']]
+};
+const SPECS_TH = { auto: [['3.2 วิ', '0–100 กม./ชม.'], ['800 แรงม้า', 'กำลังสูงสุด'], ['340 กม./ชม.', 'ความเร็วสูงสุด'], ['1,380 กก.', 'น้ำหนักตัวรถ']], _: [['4.9★', 'คะแนนเฉลี่ย'], ['2 ล้าน+', 'ลูกค้าที่พึงพอใจ'], ['120+', 'ประเทศ'], ['24/7', 'ซัพพอร์ต']] };
+const thaiModel = (cat) => ({ copy: { ...(COPY_TH[cat] || COPY_TH.other), fine: FINE_TH[cat] || FINE_TH._ }, feats: FEATURES_TH[cat] || FEATURES_TH._, specs: SPECS_TH[cat] || SPECS_TH._ });
+
 function sat(c) { const mx = Math.max(c.r, c.g, c.b), mn = Math.min(c.r, c.g, c.b); return mx === 0 ? 0 : (mx - mn) / mx; }
 function accents(colors, primary, n = 3) {
   const p = parseColor(primary);
@@ -59,13 +80,47 @@ function accents(colors, primary, n = 3) {
   return out;
 }
 
-export function fontFor(name) {
+/** Free Thai companion for a brand's font. Latin fonts have no Thai glyphs, so without this the browser falls back to a system font. */
+export function thaiFontFor(name, weight) {
   const n = String(name || '').toLowerCase();
-  if (/mono|courier|menlo|consolas/.test(n)) return "'JetBrains Mono', ui-monospace, monospace";
-  if (/copernicus|tiempos|editorial|georgia|garamond|playfair|lyon|times|(^|[^a-z-])serif/.test(n) && !/sans/.test(n)) return "'Source Serif 4', Georgia, serif";
-  if (/^dm sans/.test(n)) return "'DM Sans', Inter, sans-serif";
-  if (/ibm plex sans/.test(n)) return "'IBM Plex Sans', Inter, sans-serif";
-  return "Inter, 'Noto Sans Thai', system-ui, sans-serif";
+  if (/mono|courier|menlo|consolas/.test(n)) return 'IBM Plex Sans Thai Looped';
+  if (/copernicus|tiempos|editorial|georgia|garamond|playfair|lyon|times|(^|[^a-z-])serif/.test(n) && !/sans/.test(n)) return 'Noto Serif Thai';
+  if (/ibm plex/.test(n)) return 'IBM Plex Sans Thai';
+  if (/impact|bebas|oswald|anton|condensed|black|ultra|heavy/.test(n) || parseFloat(weight) >= 800) return 'Kanit';
+  return 'Anuphan';
+}
+const THAI_FALLBACK = { 'Noto Serif Thai': 'serif', 'IBM Plex Sans Thai Looped': 'sans-serif' };
+const thaiFamilies = (thai) => `'${thai}', 'Noto Sans Thai'`;
+export const thaiStack = (thai) => `${thaiFamilies(thai)}, ${THAI_FALLBACK[thai] || 'sans-serif'}`;
+
+export function fontFor(name, weight) {
+  const n = String(name || '').toLowerCase();
+  const th = thaiFamilies(thaiFontFor(name, weight));
+  if (/mono|courier|menlo|consolas/.test(n)) return `'JetBrains Mono', ${th}, ui-monospace, monospace`;
+  if (/copernicus|tiempos|editorial|georgia|garamond|playfair|lyon|times|(^|[^a-z-])serif/.test(n) && !/sans/.test(n)) return `'Source Serif 4', ${th}, Georgia, serif`;
+  if (/^dm sans/.test(n)) return `'DM Sans', Inter, ${th}, sans-serif`;
+  if (/ibm plex sans/.test(n)) return `'IBM Plex Sans', Inter, ${th}, sans-serif`;
+  return `Inter, ${th}, system-ui, sans-serif`;
+}
+
+/** Google Fonts <link> URL for the base fonts plus any extra families (Thai companions) a page needs. */
+const GF_WEIGHTS = { 'Anuphan': '400;500;600;700', 'IBM Plex Sans Thai': '400;500;600', 'IBM Plex Sans Thai Looped': '400;500;600', 'Noto Serif Thai': '400;500;600', 'Kanit': '400;500;600;700', 'Noto Sans Thai': '400;500;600;700' };
+export const ALL_THAI_FONTS = ['Anuphan', 'IBM Plex Sans Thai', 'IBM Plex Sans Thai Looped', 'Noto Serif Thai', 'Kanit'];
+export function fontsUrl(thaiFonts = []) {
+  const base = 'Inter:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Thai:wght@400;500;600';
+  const extra = [...new Set(thaiFonts)].filter((f) => GF_WEIGHTS[f]).map((f) => `&family=${f.replace(/ /g, '+')}:wght@${GF_WEIGHTS[f]}`).join('');
+  return `https://fonts.googleapis.com/css2?family=${base}${extra}&display=swap`;
+}
+
+/** Latin + Thai font plan for a brand, used by the landing preview and by the download files. */
+export function fontPlan(tokens) {
+  const tyList = Object.entries(tokens.typography || {}).filter(([, v]) => v && typeof v === 'object');
+  const bySize = [...tyList].sort((a, c) => num(c[1].fontSize, 0) - num(a[1].fontSize, 0));
+  const display = (bySize.find(([k]) => /display|hero/.test(k)) || bySize[0] || [])[1];
+  const body = (tyList.find(([k]) => /^body(-md)?$/.test(k)) || tyList.find(([k]) => /^body/.test(k)) || [])[1];
+  const dName = display?.fontFamily, bName = body?.fontFamily || dName;
+  const thD = thaiFontFor(dName, display?.fontWeight), thB = thaiFontFor(bName, body?.fontWeight);
+  return { displayName: String(dName || ''), bodyName: String(bName || ''), display: fontFor(dName, display?.fontWeight), body: fontFor(bName, body?.fontWeight), thaiDisplay: thD, thaiBody: thB };
 }
 
 const num = (v, d) => { const x = parseFloat(v); return Number.isFinite(x) ? x : d; };
@@ -115,6 +170,7 @@ function buildPalette(colors, theme, o) {
   const ink2 = solid.find((x) => /(body-muted|ink-secondary|text-secondary|body-secondary|slate|ink-muted)$/.test(x.name) && contrast(x.c, bgC) >= 4.5);
   const bd2 = byName(/(card-border|border-light|hairline-soft|border-soft|border-subtle)/);
   const focus = byName(/focus/);
+  const stat = { err: tuneStatus('err', err?.value, theme.bg, theme.surface), ok: tuneStatus('ok', okc?.value, theme.bg, theme.surface), warn: tuneStatus('warn', warn?.value, theme.bg, theme.surface) };
 
   const soft = [0, 1, 2].map((i) => softs[i]?.value || theme.surface);
   const band1 = bands[0]?.value || null, band2 = bands[1]?.value || band1;
@@ -124,7 +180,7 @@ function buildPalette(colors, theme, o) {
     band1: band1 || o.priBg, onband1: readableOn(parseColor(band1 || o.priBg) || priC),
     cta, oncta: readableOn(parseColor(cta) || priC),
     a1: accents[0], a2: accents[1], a3: accents[2], a4: accents[3], a5: accents[4], a6: accents[5],
-    err: err?.value || accents[1], okc: okc?.value || accents[0], warnc: warn?.value || accents[2],
+    err: stat.err.value, okc: stat.ok.value, warnc: stat.warn.value,
     linkc: link?.value || o.priBg, focusc: focus?.value || o.priBg, ink2: ink2?.value || theme.mute, bd2: bd2?.value || theme.border
   };
   const usage = [
@@ -136,9 +192,10 @@ function buildPalette(colors, theme, o) {
   if (band2 || band1) usage.push(['แถบเข้ม: แบนเนอร์ปิดท้าย (CTA)', cta]);
   softs.forEach((x, i) => usage.push([`พื้นส่วนสลับ/การ์ดโทนอ่อน ${i + 1}`, x.value]));
   accPool.forEach((x) => usage.push(['สีเน้น: ไอคอน กราฟ ภาพประกอบ', x.value]));
-  if (err) usage.push(['ป้ายสถานะ: ผิดพลาด', err.value]);
-  if (okc) usage.push(['ป้ายสถานะ: สำเร็จ', okc.value]);
-  if (warn) usage.push(['ป้ายสถานะ: เตือน', warn.value]);
+  // only claim a brand color is used for a status if it was kept as-is (otherwise a readable semantic color replaces it)
+  if (err && !stat.err.changed) usage.push(['ป้ายสถานะ: ผิดพลาด', err.value]);
+  if (okc && !stat.ok.changed) usage.push(['ป้ายสถานะ: สำเร็จ', okc.value]);
+  if (warn && !stat.warn.changed) usage.push(['ป้ายสถานะ: เตือน', warn.value]);
   if (focus) usage.push(['สถานะโฟกัสของช่องกรอก (ลองกดช่องอีเมลท้ายหน้า)', focus.value]);
   return { vars, usage, hasBand: !!band1 };
 }
@@ -204,7 +261,7 @@ export function categoryModel(cat) {
   return {
     category: cat, copy: { ...copy, fine: FINE[cat] || 'No credit card required · Free plan available' },
     feats: FEATURES_BY[cat] || FEATURES, editorial: ['auto', 'consumer', 'hardware'].includes(cat), oneTime,
-    specs: cat === 'auto' ? [['3.2s', '0–100 km/h'], ['800 hp', 'Peak power'], ['340 km/h', 'Top speed'], ['1,380 kg', 'Dry weight']] : [['4.9★', 'Average rating'], ['2M+', 'Happy customers'], ['120+', 'Countries'], ['24/7', 'Support']]
+    th: thaiModel(cat), specs: cat === 'auto' ? [['3.2s', '0–100 km/h'], ['800 hp', 'Peak power'], ['340 km/h', 'Top speed'], ['1,380 kg', 'Dry weight']] : [['4.9★', 'Average rating'], ['2M+', 'Happy customers'], ['120+', 'Countries'], ['24/7', 'Support']]
   };
 }
 
@@ -256,19 +313,20 @@ export function renderLanding(b, theme, ctx) {
   if (ctx) T.tiles.forEach((x) => ctx.usage.push(['การ์ดสีบล็อกประจำแบรนด์', x.value]));
   const inv = theme.dark ? theme.ink : theme.ink; // inverse block = ink on bg
   const onInv = theme.bg;
-  const fd = fontFor(display?.fontFamily), fb = fontFor(body?.fontFamily || display?.fontFamily);
+  const FP = fontPlan(t);
+  const fd = FP.display, fb = FP.body;
   const vars = [
     `--bg:${css(theme.bg, '#fff')}`, `--ink:${css(theme.ink, '#111')}`, `--mute:${css(theme.mute, '#666')}`, `--pri:${css(priBg, '#333')}`, `--onpri:${css(priFg, '#fff')}`,
     `--sur:${css(theme.surface, '#f5f5f5')}`, `--bd:${css(theme.border, '#ddd')}`, `--inv:${css(inv, '#111')}`, `--oninv:${css(onInv, '#fff')}`,
     ...Object.entries(P2).map(([k, v]) => `--${k}:${css(v, '#999')}`),
-    ...T.tiles.flatMap((x, i) => [`--tile${i + 1}:${css(x.value, '#ccc')}`, `--ontile${i + 1}:${readableOn(x.c)}`]), `--sec-pad:${T.secPad}px`, `--fe:${fontFor(T.monoTok?.fontFamily || display?.fontFamily)}`,
+    ...T.tiles.flatMap((x, i) => [`--tile${i + 1}:${css(x.value, '#ccc')}`, `--ontile${i + 1}:${readableOn(x.c)}`]), `--sec-pad:${T.secPad}px`, `--fe:${fontFor(T.monoTok?.fontFamily || display?.fontFamily, display?.fontWeight)}`,
     `--feat-bg:${css(R.hasBand ? P2.band1 : inv, '#111')}`, `--feat-fg:${css(R.hasBand ? P2.onband1 : onInv, '#fff')}`,
     `--r-btn:${radBtn}`, `--r-card:${radCard}`, `--r-in:${radIn}`, `--pad-btn:${padBtn}`,
     ...(navBg ? [`--nav-bg:${navBg}`, `--nav-fg:${navFg || readableOn(parseColor(navBg))}`] : []),
     ...(pillBg ? [`--pill-bg:${pillBg}`, `--pill-fg:${pillFg}`, `--pill-r:${css(get(pillC.rounded), '9999px')}`] : []),
     ...(footBg ? [`--foot-bg:${footBg}`, `--foot-fg:${footFg}`] : []),
     ...(cardPad ? [`--card-pad:${cardPad}`] : []), ...(shadows[0] ? [`--sh1:${shadows[0]}`, `--sh2:${shadows[Math.min(1, shadows.length - 1)]}`] : []),
-    `--sec-bg:${secBg}`, `--sec-fg:${secFg}`, `--fd:${fd}`, `--fb:${fb}`,
+    `--sec-bg:${secBg}`, `--sec-fg:${secFg}`, `--fd:${fd}`, `--fb:${fb}`, `--fdth:'${FP.thaiDisplay}'`, `--fbth:'${FP.thaiBody}'`,
     tvars('h1', display, { size: 56, weight: 600, lh: 1.1 }),
     tvars('h2', heading || display, { size: 32, weight: 600, lh: 1.2 }),
     tvars('body', body, { size: 16, weight: 400, lh: 1.5 }),
@@ -285,33 +343,35 @@ export function renderLanding(b, theme, ctx) {
   const M = {
     name: b.name, slug: b.slug, category: b.category,
     copy: { ...copy, fine: FINE[b.category] || 'No credit card required · Free plan available' },
-    feats: FEATURES_BY[b.category] || FEATURES, editorial: T.editorial, oneTime, hasBand: R.hasBand, tileCount: T.tiles.length, specs,
+    th: thaiModel(b.category), feats: FEATURES_BY[b.category] || FEATURES, editorial: T.editorial, oneTime, hasBand: R.hasBand, tileCount: T.tiles.length, specs,
     lightPriOnDark: theme.dark && luminance(parseColor(priBg) || parseColor(theme.primary)) > 0.6
   };
   const name = esc(b.name);
   const modelJson = JSON.stringify(M).replace(/</g, '\\u003c');
   const lv = esc(ctx?.vLayouts || '');
   return `<!doctype html>
-<html lang="en" class="${T.classes}" style="${vars}">
+<html lang="th" class="${T.classes}" style="${vars}">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${name} — generic sample using its design tokens</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="${fontsUrl([FP.thaiDisplay, FP.thaiBody])}" rel="stylesheet">
 <link rel="stylesheet" href="../../assets/preview.css?v=${esc(ctx?.v || '')}">
 <script>if (top !== self) document.documentElement.classList.add('framed');</script>
 </head>
 <body class="${theme.dark ? 'is-dark' : ''}">
 <div class="ribbon"><a href="../../b/${esc(b.slug)}/">← กลับไปหน้า ${name}</a><span>หน้าทั่วไปที่ใส่สี/ฟอนต์/มุมโค้งจาก DESIGN.md · ไม่ใช่หน้าจริงของแบรนด์</span></div>
-<div id="app">${renderLayout('hero', M)}</div>
+<div id="app">${renderLayout('hero', { ...M, lang: 'th' })}</div>
 <script type="application/json" id="model">${modelJson}</script>
 <script type="module">
 import { renderLayout, activate, LAYOUT_KEYS } from '../../assets/layouts.js?v=${lv}';
 const M = JSON.parse(document.getElementById('model').textContent);
 const app = document.getElementById('app');
-const k = new URLSearchParams(location.search).get('layout');
-if (k && k !== 'hero' && LAYOUT_KEYS.includes(k)) app.innerHTML = renderLayout(k, M);
+const qs = new URLSearchParams(location.search);
+const k = qs.get('layout'), lang = qs.get('lang') === 'en' ? 'en' : 'th';
+M.lang = lang; document.documentElement.lang = lang;
+if (lang === 'en' || (k && k !== 'hero' && LAYOUT_KEYS.includes(k))) app.innerHTML = renderLayout(k && LAYOUT_KEYS.includes(k) ? k : 'hero', M);
 activate(app);
 </script>
 </body></html>`;

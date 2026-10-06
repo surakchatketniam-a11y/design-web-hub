@@ -47,7 +47,7 @@
   /* ---------- groups of CSS variables ---------- */
   var G = {
     colors: /^(bg|ink|mute|pri|onpri|sur|bd|inv|oninv|soft[123]|band1|onband1|cta|oncta|a[1-6]|err|okc|warnc|linkc|focusc|ink2|bd2|feat-bg|feat-fg|tile[123]|ontile[123]|nav-bg|nav-fg|pill-bg|pill-fg|foot-bg|foot-fg|sec-bg|sec-fg)$/,
-    type: /^(fd|fb|fe|(h1|h2|h3|body|btn|cap|eb|nv)-(size|weight|lh|ls))$/,
+    type: /^(fd|fb|fe|fdth|fbth|(h1|h2|h3|body|btn|cap|eb|nv)-(size|weight|lh|ls))$/,
     shape: /^(r-btn|r-card|r-in|pad-btn|card-pad|pill-r)$/,
     feel: /^(sh1|sh2|sec-pad)$/
   };
@@ -61,7 +61,7 @@
     var brands = data.brands.slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
     var by = {}; brands.forEach(function (b) { by[b.slug] = b; });
     var params = new URLSearchParams(location.search);
-    var DEF = { c: 'airtable', t: 'claude', s: 'stripe', f: 'stripe', cat: 'dev', l: 'hero', n: 'Your Brand', p: '' };
+    var DEF = { c: 'airtable', t: 'claude', s: 'stripe', f: 'stripe', cat: 'dev', l: 'hero', lg: 'th', n: 'Your Brand', p: '' };
     var st = {};
     Object.keys(DEF).forEach(function (k) { st[k] = params.get(k) || DEF[k]; });
     ['c', 't', 's', 'f'].forEach(function (k) { if (!by[st[k]]) st[k] = DEF[k]; });
@@ -72,6 +72,7 @@
     var opts = brands.map(function (b) { return '<option value="' + esc(b.slug) + '">' + esc(b.name) + '</option>'; }).join('');
     ['colors', 'type', 'shape', 'feel'].forEach(function (g) { $('mx-' + g).innerHTML = opts; });
     $('mxCat').innerHTML = CATS.map(function (c) { return '<option value="' + c[0] + '">' + c[1] + '</option>'; }).join('');
+    $('mxLang').innerHTML = '<option value="th">ภาษาไทย</option><option value="en">English</option>';
     $('mxLayout').innerHTML = data.layouts.map(function (l) { return '<option value="' + l.key + '">' + l.n + '. ' + esc(l.thai) + '</option>'; }).join('');
     $('mxAll').innerHTML = '<option value="">ตั้งทุกกลุ่มเป็นแบรนด์เดียว…</option>' + opts;
     $('mxPrompt').innerHTML = data.prompts.map(function (p) { return '<option value="' + p.key + '">' + esc(p.title) + '</option>'; }).join('');
@@ -96,7 +97,7 @@
     var frame = $('mxFrame'), raf = 0;
     function model(E) {
       var m = Object.assign({}, data.models[st.cat]);
-      m.name = st.n || 'Your Brand'; m.slug = 'mix'; m.hasBand = !!E.c.hasBand; m.tileCount = E.classes.indexOf('tone-tiles') >= 0 ? E.c.tileCount : 0; m.lightPriOnDark = false;
+      m.name = st.n || 'Your Brand'; m.slug = 'mix'; m.hasBand = !!E.c.hasBand; m.tileCount = E.classes.indexOf('tone-tiles') >= 0 ? E.c.tileCount : 0; m.lightPriOnDark = false; m.lang = st.lg === 'en' ? 'en' : 'th';
       return m;
     }
     function send(E) {
@@ -142,6 +143,8 @@
       return out;
     }
     function shapeTokens(E) { var v = E.v; return { rounded: { button: v['r-btn'] || '8px', card: v['r-card'] || '12px', input: v['r-in'] || v['r-btn'] || '8px' }, spacing: { 'section': (num(v['sec-pad'], 88)) + 'px', 'card-padding': v['card-pad'] || '28px', 'button-padding': v['pad-btn'] || '11px 20px' } }; }
+    function thName(x) { return String(x || 'Anuphan').replace(/["']/g, ''); }
+    function thStack(x) { var n = thName(x); return "'" + n + "', 'Noto Sans Thai', " + (n === 'Noto Serif Thai' ? 'serif' : 'sans-serif'); }
     function q(s) { return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
     function sources(E) { return { colors: E.c, type: E.t, shape: E.s, feel: E.f }; }
 
@@ -176,6 +179,13 @@
       L.push('', '## Typography', '', '| Token | Size | Weight | Line height | Letter spacing |', '|---|---|---|---|---|');
       Object.keys(ty).forEach(function (k) { L.push('| `' + k + '` | ' + ty[k].fontSize + ' | ' + ty[k].fontWeight + ' | ' + ty[k].lineHeight + ' | ' + ty[k].letterSpacing + ' |'); });
       L.push('', 'Proprietary fonts are replaced by freely available fallbacks (for example Inter). Keep the documented weights and tracking so the voice stays the same.', '',
+        '## Thai Typography', '', 'The Latin fonts above have no Thai glyphs. For Thai content pair them with free Thai fonts so the browser does not fall back to a system font:', '',
+        '- Thai display / headings: **' + thName(v.fdth) + '**', '- Thai body text: **' + thName(v.fbth) + '**',
+        '- CSS stacks: `--font-thai-display: ' + thStack(v.fdth) + '`, `--font-thai-body: ' + thStack(v.fbth) + '` (see tokens.css). Keep the Thai font right after the Latin font in every `font-family`.',
+        '- Load from Google Fonts: `https://fonts.googleapis.com/css2?family=' + [thName(v.fdth), thName(v.fbth)].filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (n) { return n.replace(/ /g, '+') + ':wght@400;500;600;700'; }).join('&family=') + '&display=swap`',
+        '- Set `<html lang="th">`. Body line-height 1.7 or more and headings 1.3 or more, even if the values above are tighter.',
+        '- Never apply letter-spacing (positive or negative) to Thai text; ignore the tracking values above for Thai. No uppercase or italics on Thai.',
+        '- Body text 16px or larger; let the browser wrap Thai lines and avoid fixed-width truncation.', '',
         '## Layout', '', '- Section vertical padding: `' + sh.spacing.section + '`. Card padding: `' + sh.spacing['card-padding'] + '`.', '- Keep one clear primary action per section.', '',
         '## Elevation & Depth', '');
       if (flat) L.push('- Surfaces are flat. Separate areas with hairlines (`{colors.hairline}`) and background changes, not shadows.');
@@ -209,7 +219,7 @@
       var colors = uniqColors(E), ty = typeTokens(E), sh = shapeTokens(E), v = E.v;
       var L = ['/* ' + (st.n || 'Your Brand') + ' — mixed design tokens (created with DESIGN.md Hub) */', ':root {'];
       Object.keys(colors).forEach(function (k) { L.push('  --color-' + k + ': ' + colors[k] + ';'); });
-      L.push('  --font-display: ' + v.fd + ';', '  --font-body: ' + v.fb + ';');
+      L.push('  --font-display: ' + v.fd + ';', '  --font-body: ' + v.fb + ';', '  --font-thai-display: ' + thStack(v.fdth) + ';', '  --font-thai-body: ' + thStack(v.fbth) + ';');
       if (v.fe) L.push('  --font-label: ' + v.fe + ';');
       Object.keys(ty).forEach(function (k) { var t = ty[k]; L.push('  --text-' + k + '-size: ' + t.fontSize + ';', '  --text-' + k + '-weight: ' + t.fontWeight + ';', '  --text-' + k + '-line-height: ' + t.lineHeight + ';', '  --text-' + k + '-tracking: ' + t.letterSpacing + ';'); });
       Object.keys(sh.rounded).forEach(function (k) { L.push('  --radius-' + k + ': ' + sh.rounded[k] + ';'); });
@@ -219,11 +229,43 @@
     }
     function buildJson(E) {
       var src = sources(E);
-      return JSON.stringify({ name: st.n || 'Your Brand', generator: 'DESIGN.md Hub — Mix', sources: { colors: src.colors.name, typography: src.type.name, shapes: src.shape.name, feel: src.feel.name }, traits: E.classes, colors: uniqColors(E), typography: typeTokens(E), shape: shapeTokens(E), shadows: [E.v.sh1, E.v.sh2].filter(Boolean) }, null, 2) + '\n';
+      return JSON.stringify({ name: st.n || 'Your Brand', generator: 'DESIGN.md Hub — Mix', sources: { colors: src.colors.name, typography: src.type.name, shapes: src.shape.name, feel: src.feel.name }, traits: E.classes, colors: uniqColors(E), typography: typeTokens(E), thaiFonts: { display: thName(E.v.fdth), body: thName(E.v.fbth), note: 'Latin fonts have no Thai glyphs; use these for Thai content, body line-height >= 1.7, no letter-spacing.' }, shape: shapeTokens(E), shadows: [E.v.sh1, E.v.sh2].filter(Boolean) }, null, 2) + '\n';
     }
+    var AP = null;
     function buildPrompt() {
+      if (!AP) return '';
       var t = data.prompts.filter(function (p) { return p.key === $('mxPrompt').value; })[0] || data.prompts[0];
-      return 'ฉันกำลังสร้าง' + t.title + ' ช่วยออกแบบและเขียนโค้ดตามระบบดีไซน์ในไฟล์ DESIGN.md และ tokens.css ที่วางไว้ที่รากโปรเจกต์\n\nเนื้อหาของฉัน: [ใส่ชื่อเว็บ ธุรกิจ และสิ่งที่อยากสื่อ]\n' + t.extra + '\n\nกติกา:\n1. ยึดสี ฟอนต์ รัศมีมุม ระยะห่าง และคอมโพเนนต์ตาม DESIGN.md อย่างเคร่งครัด ห้ามเพิ่มสีหรือสไตล์ที่ไม่มีในไฟล์ (ใช้ค่าจาก tokens.css)\n2. อ่านส่วน Do\'s and Don\'ts ให้ครบและทำตาม\n3. ใช้ชื่อ โลโก้ และข้อความของฉันเอง — ห้ามใช้ชื่อหรือโลโก้ของแบรนด์ที่เป็นแรงบันดาลใจ\n4. รองรับมือถือ และใช้ HTML ที่เข้าถึงได้ง่าย (semantic tags, คอนทราสต์ผ่านเกณฑ์)\n5. ใช้ Tailwind CSS (หรือ CSS ธรรมดา) แล้วสรุปสั้นๆ ว่าตัดสินใจเรื่องดีไซน์อะไรไปบ้าง';
+      return AP.buildPrompt(t, { tool: $('mxTool').value, content: { name: st.n === 'Your Brand' ? '' : st.n, offer: $('mxOffer').value, audience: $('mxAud').value } });
+    }
+    function refreshPrompt() { $('mxPromptText').value = buildPrompt(); }
+    if (window.Promise) { try { import('./prompt.js?v=' + (root.getAttribute('data-pv') || '')).then(function (m) { AP = m; refreshPrompt(); }, function () {}); } catch (e) {} }
+
+    /* ----- contrast checker: every pair that matters, with the real ratio ----- */
+    function renderContrast(E) {
+      var v = E.v, rows = [];
+      function add(label, fg, bgc, min) {
+        var a = parseColor(fg), b = parseColor(bgc);
+        if (!a || !b) return;
+        rows.push({ label: label, fg: fg, bg: bgc, min: min, ratio: contrast(a, b) });
+      }
+      add('ตัวอักษรหลัก บนพื้นหลัง', v.ink, v.bg, 4.5);
+      add('ตัวอักษรเล็ก/ป้ายกำกับ บนพื้นหลัง', v.mute, v.bg, 4.5);
+      add('ตัวอักษรบนปุ่มหลัก', v.onpri, v.pri, 4.5);
+      add('ปุ่มหลัก บนพื้นหลัง (ต้องเห็นขอบเขตปุ่ม)', v.pri, v.bg, 3);
+      add('ลิงก์ บนพื้นหลัง', v.linkc, v.bg, 4.5);
+      if (E.c.hasBand) add('ตัวอักษรบนแถบเข้ม', v.onband1, v.band1, 4.5);
+      [['ผิดพลาด', v.err], ['สำเร็จ', v.okc], ['เตือน', v.warnc]].forEach(function (s) {
+        add('สถานะ' + s[0] + ' บนพื้นหลัง', s[1], v.bg, 4.5);
+        if (v.sur && v.sur !== v.bg) add('สถานะ' + s[0] + ' บนการ์ด', s[1], v.sur, 4.5);
+      });
+      if (E.classes.indexOf('tone-tiles') >= 0) [1, 2, 3].forEach(function (i) { if (v['tile' + i]) add('ตัวอักษรบนการ์ดสีบล็อก ' + i, v['ontile' + i], v['tile' + i], 4.5); });
+      var bad = rows.filter(function (r) { return r.ratio < r.min; });
+      function li(r) {
+        var ok = r.ratio >= r.min;
+        return '<li class="cr ' + (ok ? 'ok' : 'bad') + '"><span class="crsw" style="background:' + esc(r.bg) + ';color:' + esc(r.fg) + '">Aa</span><span class="crl">' + esc(r.label) + '</span><b>' + r.ratio.toFixed(1) + ':1</b><em>' + (ok ? '✓' : '⚠ ต่ำกว่า ' + r.min + ':1') + '</em></li>';
+      }
+      var head = bad.length ? '<li class="cr-sum bad">⚠ ' + bad.length + ' จาก ' + rows.length + ' คู่สีอ่านยากหรือมองไม่เห็นชัด</li>' : '<li class="cr-sum ok">✓ ผ่านเกณฑ์ทั้ง ' + rows.length + ' คู่สี (ตัวอักษร 4.5:1 · ปุ่ม 3:1)</li>';
+      $('mxWarn').innerHTML = head + bad.map(li).join('') + '<li class="cr-all"><details><summary>ดูทุกคู่สี</summary><ul>' + rows.map(li).join('') + '</ul></details></li>';
     }
 
     /* ----- update everything ----- */
@@ -235,11 +277,7 @@
       var md = buildDesignMd(E);
       $('mxMdText').value = md;
       $('mxPromptText').value = buildPrompt();
-      var warn = [];
-      var bg = parseColor(E.v.bg), pri = parseColor(E.v.pri), ink = parseColor(E.v.ink);
-      if (bg && ink && contrast(bg, ink) < 4.5) warn.push('ตัวอักษรหลักกับพื้นหลังคอนทราสต์ต่ำ (' + contrast(bg, ink).toFixed(1) + ':1)');
-      if (bg && pri && contrast(bg, pri) < 2) warn.push('สีหลักกลมกลืนกับพื้นหลังมาก (' + contrast(bg, pri).toFixed(1) + ':1) ปุ่มอาจไม่เด่น');
-      $('mxWarn').innerHTML = warn.length ? warn.map(function (w) { return '<li>⚠ ' + esc(w) + '</li>'; }).join('') : '<li class="ok">✓ คู่สีหลักผ่านเกณฑ์อ่านง่ายเบื้องต้น</li>';
+      renderContrast(E);
       var src = sources(E);
       $('mxSrc').innerHTML = ['colors', 'type', 'shape', 'feel'].map(function (g) { return '<li><b>' + LABEL[g].split(' ')[0] + ':</b> <a href="../b/' + esc(src[g].slug) + '/">' + esc(src[g].name) + '</a></li>'; }).join('');
       // keep the URL shareable
@@ -253,11 +291,12 @@
     var KEY = { colors: 'c', type: 't', shape: 's', feel: 'f' };
     function syncInputs() {
       Object.keys(KEY).forEach(function (g) { $('mx-' + g).value = st[KEY[g]]; });
-      $('mxCat').value = st.cat; $('mxLayout').value = st.l; $('mxName').value = st.n === 'Your Brand' ? '' : st.n;
+      $('mxCat').value = st.cat; $('mxLayout').value = st.l; $('mxLang').value = st.lg; $('mxName').value = st.n === 'Your Brand' ? '' : st.n;
       $('mxPri').value = st.p || '#533afd'; $('mxPriOn').checked = !!st.p;
     }
     Object.keys(KEY).forEach(function (g) { $('mx-' + g).addEventListener('change', function (e) { st[KEY[g]] = e.target.value; schedule(); }); });
     $('mxCat').addEventListener('change', function (e) { st.cat = e.target.value; schedule(); });
+    $('mxLang').addEventListener('change', function (e) { st.lg = e.target.value === 'en' ? 'en' : 'th'; schedule(); });
     $('mxLayout').addEventListener('change', function (e) { st.l = e.target.value; schedule(); });
     $('mxName').addEventListener('input', function (e) { st.n = e.target.value.trim() || 'Your Brand'; schedule(); });
     $('mxPriOn').addEventListener('change', function (e) { st.p = e.target.checked ? $('mxPri').value : ''; schedule(); });
@@ -265,7 +304,8 @@
     $('mxAll').addEventListener('change', function (e) { if (!e.target.value) return; ['c', 't', 's', 'f'].forEach(function (k) { st[k] = e.target.value; }); e.target.value = ''; syncInputs(); schedule(); });
     $('mxRandom').addEventListener('click', function () { ['c', 't', 's', 'f'].forEach(function (k) { st[k] = brands[Math.floor(Math.random() * brands.length)].slug; }); syncInputs(); schedule(); });
     $('mxReset').addEventListener('click', function () { Object.keys(DEF).forEach(function (k) { st[k] = DEF[k]; }); syncInputs(); schedule(); });
-    $('mxPrompt').addEventListener('change', function () { $('mxPromptText').value = buildPrompt(); });
+    ['mxPrompt', 'mxTool'].forEach(function (id) { $(id).addEventListener('change', refreshPrompt); });
+    ['mxOffer', 'mxAud'].forEach(function (id) { $(id).addEventListener('input', refreshPrompt); });
     Array.prototype.forEach.call(document.querySelectorAll('.mx-dev [data-w]'), function (b) { b.addEventListener('click', function () { frame.style.width = b.getAttribute('data-w'); Array.prototype.forEach.call(document.querySelectorAll('.mx-dev [data-w]'), function (x) { x.classList.toggle('on', x === b); }); }); });
     $('mxDlMd').addEventListener('click', function () { download('DESIGN.md', buildDesignMd(last), 'text/markdown;charset=utf-8'); });
     $('mxDlCss').addEventListener('click', function () { download('tokens.css', buildCss(last), 'text/css;charset=utf-8'); });
@@ -274,6 +314,12 @@
     $('mxCopyPrompt').addEventListener('click', function () { copyText($('mxPromptText').value).then(function () { toast('คัดลอกคำสั่งแล้ว'); }, function () { toast('คัดลอกไม่สำเร็จ'); }); });
     $('mxShare').addEventListener('click', function () { copyText(location.href).then(function () { toast('คัดลอกลิงก์การผสมนี้แล้ว'); }, function () { toast('คัดลอกไม่สำเร็จ'); }); });
 
+    // phone layout: the controls are long, so a floating button jumps between "settings" and the live preview
+    var jump = $('mxJump'), view = root.querySelector('.mix-view'), inView = false;
+    if (jump && view && 'IntersectionObserver' in window) {
+      new IntersectionObserver(function (en) { inView = en[0].intersectionRatio > 0.35; jump.textContent = inView ? '⚙ กลับไปตั้งค่า' : '👁 ดูตัวอย่าง'; }, { threshold: [0, 0.35, 0.7] }).observe(view);
+      jump.addEventListener('click', function () { (inView ? root : view).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    }
     resend = function () { if (last) send(last); };
     syncInputs(); update();
     // the frame may not have run its script yet (slow network): retry until it answers "applied"

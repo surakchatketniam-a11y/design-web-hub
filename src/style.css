@@ -188,3 +188,59 @@ input[type=search] { width:100%; max-width:480px; padding:12px 14px; border:1px 
 .mix-view { min-width: 0; } .mix-view .device { height: min(82vh, 820px); }
 .mix-out { padding-bottom: 64px; } .mix-out textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 12px/1.5 'JetBrains Mono', ui-monospace, monospace; padding: 12px; margin-top: 8px; resize: vertical; } .mix-out .doc { margin: 12px 0 20px; padding: 0 16px 12px; } .plain-list { list-style: none; padding: 0; display: grid; gap: 4px; margin: 4px 0 16px; font-size: 14px; }
 @media (max-width: 960px) { .mix { grid-template-columns: minmax(0, 1fr); } .mix-ctrl { position: static; max-height: none; overflow: visible; } }
+
+/* contrast checker (mix page) */
+.mx-warn { color: inherit; }
+.mx-warn ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.cr, .cr-sum { display: flex; align-items: center; gap: 8px; font-size: 12.5px; line-height: 1.35; }
+.cr-sum { font-size: 13px; font-weight: 600; margin-bottom: 6px; } .cr-sum.ok { color: #15803d; } .cr-sum.bad { color: #b45309; }
+.crsw { flex: none; width: 34px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 6px; font-weight: 700; font-size: 12px; }
+.crl { flex: 1; min-width: 0; color: var(--mute); } .cr b { flex: none; font-variant-numeric: tabular-nums; } .cr em { flex: none; font-style: normal; font-weight: 600; }
+.cr.ok em { color: #15803d; } .cr.bad em, .cr.bad b { color: #b45309; }
+.cr-all { margin-top: 6px; } .cr-all summary { cursor: pointer; color: var(--mute); font-size: 12.5px; }
+@media (prefers-color-scheme: dark) { .cr-sum.ok, .cr.ok em { color: #4ade80; } .cr-sum.bad, .cr.bad em, .cr.bad b { color: #fbbf24; } }
+
+/* native selects/textarea outside the control column (e.g. AI prompt picker) share the mix form look */
+.mix-out select { width: 100%; max-width: 420px; padding: 9px 36px 9px 12px; border: 1px solid var(--line); border-radius: 10px; background-color: var(--card); color: var(--ink); font: inherit; appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--mute) 50%), linear-gradient(135deg, var(--mute) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.mix select { appearance: none; -webkit-appearance: none; padding-right: 36px; background-image: linear-gradient(45deg, transparent 50%, var(--mute) 50%), linear-gradient(135deg, var(--mute) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+
+/* floating "settings / preview" jump button, phone layout only */
+.mx-jump { display: none; position: fixed; right: 14px; bottom: 16px; z-index: 30; box-shadow: 0 6px 20px rgba(0,0,0,.25); border-radius: 9999px; padding: 11px 18px; }
+@media (max-width: 960px) { .mx-jump { display: inline-flex; } }
+
+/* style finder (home) */
+.wiz { margin: 8px auto 32px; padding-top: 8px; } .wiz > h2 { margin-bottom: 14px; }
+.wiz { background: var(--acc-soft); border-radius: var(--r); padding: 22px 24px 20px; max-width: 1112px; }
+.wiz-q { margin-bottom: 14px; } .wiz-q > b { display: block; margin-bottom: 8px; font-size: 14px; }
+#wizOut { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px; } #wizOut h3 { margin: 0 0 12px; font-size: 17px; }
+.wiz-grid { padding-bottom: 8px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); } .wiz-item { display: grid; gap: 8px; align-content: start; } .wiz-why { margin: 0; font-size: 12.5px; color: var(--mute); }
+.wiz-mix { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 18px; margin: 6px 0 10px; } .wiz-mix p { margin: 4px 0 0; font-size: 13.5px; max-width: 640px; }
+.wiz-note { font-size: 12.5px; margin: 0; }
+@media (max-width: 760px) { .wiz { padding: 18px 16px; border-radius: 0; } }
+
+.card-wrap { position: relative; display: flex; } .card-wrap > .card { flex: 1; min-width: 0; }
+.card-wrap .card-body { padding-bottom: 46px; }
+.cmp-btn { position: absolute; bottom: 10px; right: 10px; z-index: 2; border: 1px solid var(--line); background: color-mix(in srgb, var(--card) 92%, transparent); color: var(--ink); border-radius: 9999px; padding: 3px 10px; font: 600 12px Inter, "Noto Sans Thai", sans-serif; cursor: pointer; }
+.cmp-btn:hover { border-color: var(--acc); } .cmp-btn[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); }
+.cmp-tray { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 24px); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, .22); font-size: 13px; }
+.cmp-tray .cmp-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--acc-soft); border-radius: 9999px; padding: 3px 4px 3px 10px; font-weight: 600; } .cmp-tray .cmp-chip button { border: 0; background: none; color: var(--mute); cursor: pointer; font-size: 14px; padding: 0 6px; }
+.cmp-tray .btn[aria-disabled="true"] { opacity: .5; pointer-events: none; }
+/* recommended recipes */
+.recipes { margin: 8px auto 32px; } .recipes > .muted { margin: 0 0 14px; }
+.rec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.rec-src { font-size: 12.5px !important; margin-top: 6px !important; }
+/* compare page */
+.cmp { padding-bottom: 56px; } .cmp-ctrl { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px 14px; margin-bottom: 18px; align-items: end; }
+.cmp select { width: 100%; padding: 9px 36px 9px 12px; border: 1px solid var(--line); border-radius: 10px; background-color: var(--card); color: var(--ink); font: inherit; appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--mute) 50%), linear-gradient(135deg, var(--mute) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.cmp-cols { display: grid; gap: 16px; align-items: start; } .cmp-cols.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cmp-cols.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cmp-col { min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; } .cmp-col h2 { margin: 0 0 8px; font-size: 20px; } .cmp-th { margin: 8px 0 0; font-size: 14px; }
+.cmp-sw { display: flex; height: 16px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); margin: 10px 0; } .cmp-sw i { flex: 1; } .cmp-font { margin: 0 0 8px; font-size: 13px; color: var(--mute); }
+.cmp-frame { height: min(76vh, 720px); width: 100%; }
+@media (max-width: 900px) { .cmp-cols.n2, .cmp-cols.n3 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .top nav .nl-cmp { display: none; } }
+
+/* AI prompt controls (brand page tab + mix page) */
+.pctl, .mx-pctl { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 4px 14px; margin: 0 0 6px; }
+.pctl select, .pctl input[type=text], .mx-pctl select, .mx-pctl input[type=text] { width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background-color: var(--card); color: var(--ink); font: inherit; }
+.pctl select, .mx-pctl select { appearance: none; -webkit-appearance: none; padding-right: 36px; background-image: linear-gradient(45deg, transparent 50%, var(--mute) 50%), linear-gradient(135deg, var(--mute) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.pnote { font-size: 13px; margin: 0 0 14px; }

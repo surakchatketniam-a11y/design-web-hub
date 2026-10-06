@@ -66,3 +66,32 @@ export function deriveTheme(colors = {}, opts = {}) {
   })();
   return { bg, ink, mute, primary, onPrimary, surface, border, dark: luminance(bgC) < 0.35 };
 }
+
+/* ---------- status colors (error / success / warning) ----------
+   Brand files rarely define them, and the old fallback borrowed random accent colors (a yellow "error", a white "error").
+   A status color is only kept if its hue means what it says and it is readable (4.5:1) on the page and card background;
+   otherwise it is replaced by a safe semantic color. A plausible brand color that is merely too light/dark keeps its hue and is nudged. */
+function hueOf(c) {
+  const r = c.r / 255, g = c.g / 255, b = c.b / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if (!d) return 0;
+  const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+}
+const HUE_OK = { err: (h) => h <= 22 || h >= 335, ok: (h) => h >= 75 && h <= 170, warn: (h) => h >= 22 && h <= 60 };
+const SEMANTIC = { light: { err: '#b42318', ok: '#067647', warn: '#b54708' }, dark: { err: '#ff8a80', ok: '#4ade80', warn: '#fbbf24' } };
+export const STATUS_MIN_CONTRAST = 4.5;
+
+export function tuneStatus(kind, value, bgHex, surHex) {
+  const bgC = parseColor(bgHex), surC = parseColor(surHex) || bgC;
+  const worst = (c) => Math.min(contrast(c, bgC), contrast(c, surC));
+  const given = parseColor(value);
+  const plausible = given && given.a >= 0.99 && saturation(given) >= 0.4 && HUE_OK[kind](hueOf(given));
+  const start = plausible ? given : parseColor(SEMANTIC[luminance(bgC) < 0.35 ? 'dark' : 'light'][kind]);
+  const toward = contrast(BLACK, bgC) >= contrast(WHITE, bgC) ? BLACK : WHITE;
+  let best = start;
+  for (let t = 0; t <= 1.0001 && worst(best) < STATUS_MIN_CONTRAST; t += 0.04) {
+    best = { r: start.r + (toward.r - start.r) * t, g: start.g + (toward.g - start.g) * t, b: start.b + (toward.b - start.b) * t, a: 1 };
+  }
+  const hex = toHex(best);
+  return { value: hex, changed: !plausible || hex.toLowerCase() !== String(value).toLowerCase() };
+}

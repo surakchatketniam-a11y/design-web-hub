@@ -176,8 +176,100 @@ function masonryLayout(M) {
 <div class="masonry" data-grid>${items.map(([t], i) => `<article class="mitem" data-cat="${['Design', 'Product', 'People', 'Places'][i % 4]}" style="--mh:${hs[i % hs.length]}px">${cover(i, hs[i % hs.length], true)}<div class="m-cap"><b>${esc(t)}</b><small>${['Design', 'Product', 'People', 'Places'][i % 4]}</small></div></article>`).join('')}</div></main>${FOOT(M)}`;
 }
 
+/* ---------- Thai preview: model copy comes from M.th, the fixed UI strings are translated here ---------- */
+const TH = {
+  'Sign in': 'เข้าสู่ระบบ', 'Learn more': 'ดูเพิ่มเติม', 'Learn more →': 'ดูเพิ่มเติม →', 'Most popular': 'ยอดนิยม', 'Choose plan': 'เลือกแผนนี้', 'Configure': 'กำหนดรุ่น', 'Configurations': 'รุ่นให้เลือก', 'Pricing': 'ราคา',
+  'Choose the one that fits you': 'เลือกแบบที่เหมาะกับคุณ', 'Simple plans that grow with you': 'แผนเรียบง่ายที่โตไปพร้อมคุณ',
+  'Essential': 'พื้นฐาน', 'Performance': 'สมรรถนะ', 'Collector': 'สะสม', 'Starter': 'เริ่มต้น', 'Pro': 'โปร', 'Business': 'ธุรกิจ',
+  'Core specification': 'สเปกหลัก', 'Standard finish': 'การตกแต่งมาตรฐาน', '2-year warranty': 'รับประกัน 2 ปี', 'Upgraded performance': 'สมรรถนะที่อัปเกรด', 'Premium materials': 'วัสดุพรีเมียม', 'Extended warranty': 'รับประกันขยายเวลา', 'Priority service': 'บริการแบบเร่งด่วน', 'Limited edition': 'รุ่นจำนวนจำกัด', 'Bespoke options': 'ตัวเลือกสั่งทำพิเศษ', 'Concierge support': 'ดูแลแบบส่วนตัว',
+  'Up to 3 projects': 'สูงสุด 3 โปรเจกต์', 'Community support': 'ซัพพอร์ตจากชุมชน', 'Basic reports': 'รายงานพื้นฐาน', 'Unlimited projects': 'โปรเจกต์ไม่จำกัด', 'Priority support': 'ซัพพอร์ตก่อนใคร', 'Advanced reports': 'รายงานขั้นสูง', 'Team permissions': 'กำหนดสิทธิ์ทีม', 'Single sign-on': 'ล็อกอินครั้งเดียว (SSO)', 'Audit log': 'บันทึกการใช้งาน', 'Dedicated manager': 'ผู้ดูแลเฉพาะ',
+  '/mo': '/เดือน', 'Frequently asked questions': 'คำถามที่พบบ่อย', 'Subscribe': 'สมัครรับข่าว',
+  'Can I try it before paying?': 'ลองใช้ก่อนจ่ายได้ไหม', 'Yes. Start with the free plan and upgrade only when you need more.': 'ได้ เริ่มจากแผนฟรี แล้วอัปเกรดเมื่อต้องการเท่านั้น',
+  'Is my data secure?': 'ข้อมูลของฉันปลอดภัยไหม', 'Your data is encrypted in transit and at rest, and you stay in control of who can see it.': 'ข้อมูลถูกเข้ารหัสทั้งตอนส่งและตอนจัดเก็บ และคุณควบคุมได้ว่าใครเห็นอะไร',
+  'Can I cancel at any time?': 'ยกเลิกได้ทุกเมื่อไหม', 'Absolutely. There are no long-term contracts and you can cancel whenever you like.': 'ได้แน่นอน ไม่มีสัญญาระยะยาว ยกเลิกเมื่อไรก็ได้',
+  'Trusted by teams everywhere': 'ทีมทั่วโลกไว้วางใจ', 'Features': 'จุดเด่น', 'Everything you need, nothing you don’t': 'มีทุกอย่างที่จำเป็น ไม่มีส่วนเกิน', 'A focused set of capabilities designed to help you get to the result faster.': 'ชุดความสามารถที่คัดมาแล้ว เพื่อให้คุณถึงผลลัพธ์ได้เร็วขึ้น',
+  'How it works': 'ทำงานอย่างไร', 'Start simple, scale when you’re ready': 'เริ่มง่ายๆ แล้วขยายเมื่อพร้อม', 'Set up in minutes, invite your team and grow without rebuilding from scratch.': 'ตั้งค่าในไม่กี่นาที ชวนทีมมาร่วมงาน แล้วเติบโตได้โดยไม่ต้องเริ่มใหม่',
+  'Guided setup and sensible defaults': 'มีตัวช่วยตั้งค่าและค่าเริ่มต้นที่เหมาะสม', 'Clear permissions for every role': 'สิทธิ์ที่ชัดเจนสำหรับทุกบทบาท', 'Reports you can share in one click': 'แชร์รายงานได้ในคลิกเดียว',
+  'This year': 'ปีนี้', 'Last year': 'ปีที่แล้ว',
+  '“It changed how our whole team works. We shipped in weeks what used to take months.”': '“มันเปลี่ยนวิธีทำงานของทั้งทีม งานที่เคยใช้เป็นเดือน ตอนนี้เสร็จในไม่กี่สัปดาห์”', 'Alex Morgan': 'อเล็กซ์ มอร์แกน', 'Head of Product, Northwind': 'หัวหน้าผลิตภัณฑ์ บริษัทตัวอย่าง',
+  'Join thousands of people already using it every day.': 'ร่วมกับผู้คนนับพันที่ใช้งานทุกวัน',
+  'Product': 'ผลิตภัณฑ์', 'Company': 'บริษัท', 'Resources': 'แหล่งความรู้', 'Overview': 'ภาพรวม', 'Changelog': 'บันทึกการอัปเดต', 'About': 'เกี่ยวกับ', 'Careers': 'ร่วมงานกับเรา', 'Press': 'ข่าวสาร', 'Docs': 'เอกสาร', 'Help center': 'ศูนย์ช่วยเหลือ', 'Contact': 'ติดต่อ',
+  'Why people choose': 'ทำไมคนถึงเลือก', 'Create your account in a minute': 'สร้างบัญชีในหนึ่งนาที', 'Connect the tools you already use': 'เชื่อมต่อเครื่องมือที่คุณใช้อยู่', 'Invite your team and start working': 'ชวนทีมแล้วเริ่มทำงานได้เลย',
+  'The journal': 'บันทึก', 'Latest stories': 'เรื่องล่าสุด', 'Read more →': 'อ่านต่อ →', 'Categories': 'หมวดหมู่', 'Popular': 'ยอดนิยม', 'Newsletter': 'จดหมายข่าว', 'Design': 'ดีไซน์', 'Engineering': 'วิศวกรรม', 'Customers': 'ลูกค้า',
+  'Live': 'สด', 'New release is rolling out': 'กำลังทยอยปล่อยเวอร์ชันใหม่', 'Status: all systems operational': 'สถานะ: ระบบทำงานปกติ', 'Join the community call on Friday': 'ร่วมคุยกับชุมชนวันศุกร์', 'Browse': 'เรียกดู', 'Top stories': 'เรื่องเด่น', 'Latest': 'ล่าสุด', 'Guides': 'คู่มือ', 'Videos': 'วิดีโอ', 'Topics': 'หัวข้อ', 'Community': 'ชุมชน', 'Account': 'บัญชี', 'Saved': 'ที่บันทึกไว้', 'Settings': 'ตั้งค่า', 'Featured': 'แนะนำ', 'Trending': 'กำลังมาแรง', 'This week': 'สัปดาห์นี้', 'active readers': 'ผู้อ่านที่ใช้งานอยู่', 'Join us': 'ร่วมกับเรา', 'Get the weekly digest.': 'รับสรุปรายสัปดาห์',
+  'Analytics': 'วิเคราะห์ข้อมูล', 'Orders': 'คำสั่งซื้อ', 'Revenue': 'รายได้', 'Active users': 'ผู้ใช้งาน', 'Conversion': 'อัตราแปลง', 'Open tickets': 'เรื่องที่เปิดอยู่', 'Recent activity': 'กิจกรรมล่าสุด', 'Projects': 'โปรเจกต์', 'Activity': 'กิจกรรม', 'Reports': 'รายงาน', 'Paid': 'ชำระแล้ว', 'Pending': 'รอดำเนินการ', 'Failed': 'ล้มเหลว',
+  'Productivity': 'ประสิทธิภาพการทำงาน', 'Text size': 'ขนาดตัวอักษร', 'Popular posts': 'บทความยอดนิยม', 'Tags': 'แท็ก', 'Habits': 'นิสัย', 'Teams': 'ทีม', 'Focus': 'สมาธิ', 'Tools': 'เครื่องมือ', 'Writing': 'การเขียน', 'Remote': 'ทำงานทางไกล',
+  'Good habits are boring on purpose.': 'นิสัยที่ดีน่าเบื่อโดยตั้งใจ', '1. Decide what “done” means': '1. กำหนดให้ชัดว่า “เสร็จ” คืออะไร', '2. Keep meetings for decisions': '2. เก็บการประชุมไว้ตัดสินใจ',
+  'Clear finish lines make hand-offs easy and reduce the back-and-forth that eats most of the week.': 'เส้นชัยที่ชัดเจนทำให้ส่งต่องานง่ายและลดการถามไปตอบมาที่กินเวลาเกือบทั้งสัปดาห์', 'Share updates in writing, and save live time for questions that need a conversation.': 'แจ้งความคืบหน้าเป็นลายลักษณ์อักษร และเก็บเวลาคุยสดไว้สำหรับเรื่องที่ต้องคุยจริงๆ',
+  'Start small. Pick one habit, run it for two weeks and write down what changed. If nothing improved, drop it without guilt.': 'เริ่มจากเล็กๆ เลือกนิสัยเดียว ลองสองสัปดาห์แล้วจดว่าอะไรเปลี่ยนไป ถ้าไม่ดีขึ้นก็เลิกได้ไม่ต้องรู้สึกผิด',
+  'Guide': 'คู่มือ', 'The short version': 'ฉบับสั้น', 'Key points': 'ประเด็นสำคัญ', 'Going deeper': 'เจาะลึก', 'On this page': 'ในหน้านี้', 'At a glance': 'ดูแบบรวดเร็ว', 'Time': 'เวลา', 'Level': 'ระดับ', 'Updated': 'อัปเดต', '5 min': '5 นาที', 'Beginner': 'เริ่มต้น', 'This week ': 'สัปดาห์นี้',
+  'Start with the outcome you want, then work backwards to the smallest set of steps that gets you there.': 'เริ่มจากผลลัพธ์ที่ต้องการ แล้วย้อนกลับไปหาขั้นตอนที่น้อยที่สุดที่พาไปถึงได้', 'Keep each step measurable so you can tell quickly if it is working.': 'ทำให้ทุกขั้นตอนวัดผลได้ จะได้รู้เร็วว่าใช้ได้ผลหรือไม่', 'Details live here for readers who want them.': 'รายละเอียดอยู่ตรงนี้สำหรับผู้ที่อยากอ่านต่อ',
+  'Clarity first.': 'ชัดเจนก่อน', 'One action.': 'หนึ่งการกระทำ', 'Proof.': 'หลักฐาน', 'Say what it is in one sentence.': 'บอกว่ามันคืออะไรในหนึ่งประโยค', 'Give people a single obvious next step.': 'ให้คนเห็นก้าวถัดไปที่ชัดเจนเพียงอย่างเดียว', 'Show evidence instead of adjectives.': 'แสดงหลักฐานแทนคำคุณศัพท์',
+  'Catalog': 'แคตตาล็อก', 'Explore the range': 'สำรวจทุกรุ่น', 'Browse everything': 'ดูทั้งหมด', 'All': 'ทั้งหมด', 'View': 'ดู', 'Gallery': 'แกลเลอรี', 'Inspiration wall': 'กำแพงแรงบันดาลใจ', 'People': 'ผู้คน', 'Places': 'สถานที่',
+  'Highlights': 'ไฮไลต์', 'Made to be experienced': 'สร้างมาให้สัมผัส', 'Scroll ↓': 'เลื่อนลง ↓', 'Long read': 'อ่านยาว', 'Everything in one place': 'ทุกอย่างอยู่ในที่เดียว', 'Limited offer:': 'ข้อเสนอจำกัด:', 'Special offer': 'ข้อเสนอพิเศษ',
+  'Models': 'รุ่นรถ', 'Limited': 'จำนวนจำกัด', 'Parts': 'อะไหล่', 'Apparel': 'เครื่องแต่งกาย',
+  'Starter template': 'เทมเพลตเริ่มต้น', 'Free': 'ฟรี', 'Templates': 'เทมเพลต', 'Dashboard kit': 'ชุดแดชบอร์ด', 'Launch checklist': 'เช็กลิสต์ก่อนเปิดตัว', 'Team workspace': 'พื้นที่ทำงานทีม', 'Plans': 'แผน', 'Analytics pack': 'ชุดวิเคราะห์ข้อมูล', 'Add-ons': 'ส่วนเสริม', 'Security review': 'ตรวจสอบความปลอดภัย', 'Services': 'บริการ', 'Migration help': 'ช่วยย้ายระบบ', 'Pro support': 'ซัพพอร์ตแบบโปร',
+  'Search…': 'ค้นหา…', 'Toggle menu': 'สลับเมนู', 'Pagination': 'เลขหน้า', 'Sections': 'หมวด', 'Email': 'อีเมล',
+  'save 20% on your first year': 'ลด 20% สำหรับปีแรก', 'Discover →': 'ดูเพิ่มเติม →', 'Signature': 'ซิกเนเจอร์', 'Sport': 'สปอร์ต', 'Classic': 'คลาสสิก', 'Search': 'ค้นหา',
+  'Coupé': 'คูเป้', 'Spider': 'สไปเดอร์', 'Grand Tourer': 'แกรนด์ทัวเรอร์', 'Sport Sedan': 'สปอร์ตซีดาน', 'Track Edition': 'รุ่นแทร็ก', 'Heritage Series': 'ซีรีส์เฮอริเทจ', 'Accessories Kit': 'ชุดอุปกรณ์เสริม', 'Driver Gear': 'ชุดนักขับ',
+  'Phone Pro': 'โฟน โปร', 'Buds': 'หูฟังบัด', 'Laptop Air': 'แล็ปท็อป แอร์', 'Charger': 'ที่ชาร์จ', 'Case': 'เคส',
+  'Weekend Edit': 'คัดเด็ดวันหยุด', 'Home Studio': 'โฮมสตูดิโอ', 'Trail Notes': 'บันทึกเส้นทาง', 'Slow Kitchen': 'ครัวสโลว์', 'City Weekends': 'สุดสัปดาห์ในเมือง', 'Pocket Gifts': 'ของขวัญชิ้นเล็ก', 'Quiet Corners': 'มุมสงบ', 'Fresh Finds': 'ของใหม่น่าลอง',
+  'Phone': 'โทรศัพท์', 'Watch': 'นาฬิกา', 'Audio': 'เสียง', 'Laptop': 'แล็ปท็อป', 'Tablet': 'แท็บเล็ต', 'Accessory': 'อุปกรณ์เสริม', 'Style': 'สไตล์', 'Home': 'บ้าน', 'Outdoors': 'กลางแจ้ง', 'Food': 'อาหาร', 'Travel': 'ท่องเที่ยว', 'Gifts': 'ของขวัญ', 'New': 'ใหม่', 'Collection': 'คอลเลกชัน', 'Daily': 'รายวัน'
+};
+const TH_ARTICLES = [
+  ['การออกแบบที่มีจุดยืนชัดเจน', 'ทำไมความสม่ำเสมอจึงชนะความแปลกใหม่ เมื่อคุณสร้างสิ่งที่คนใช้ทุกวัน'],
+  ['นิสัย 5 อย่างของทีมที่ส่งงานได้จริง', 'กิจวัตรเล็กๆ ที่ทำให้โปรเจกต์เดินหน้าโดยไม่ต้องเพิ่มการประชุม'],
+  ['ไตรมาสนี้มีอะไรเปลี่ยนไป', 'พาชมการปรับปรุงที่เราทำ และสิ่งที่เรียนรู้ระหว่างทาง'],
+  ['ส่องรุ่นใหม่ให้ละเอียดขึ้น', 'ความสามารถใหม่ ค่าเริ่มต้นที่เหมาะสม และรายละเอียดเล็กๆ ที่คุณอาจพลาดไป'],
+  ['เบื้องหลัง: เราสร้างอย่างไร', 'จากภาพร่างแรกถึงของจริง การตัดสินใจที่หล่อหลอมผลิตภัณฑ์'],
+  ['เรื่องของลูกค้า: จากไอเดียสู่การเปิดตัว', 'ทีมเล็กๆ ขึ้นระบบได้ในไม่กี่สัปดาห์ และสิ่งที่พวกเขาจะทำต่างออกไป'],
+  ['ได้มากขึ้นจากพื้นฐาน', 'เทคนิคง่ายๆ ที่ทำให้งานประจำวันเร็วและสบายขึ้น'],
+  ['เหตุผลที่ควรช้าลงสักนิด', 'ใช้เวลาตอนเริ่มต้นช่วยประหยัดได้หลายเดือน และนี่คือวิธีตัดสินใจ']
+];
+const TH_PATTERNS = [
+  [/^See what’s new in (.+) →$/, (m) => `ดูว่ามีอะไรใหม่ใน ${m[1]} →`],
+  [/^Ready to get started with (.+)\?$/, (m) => `พร้อมเริ่มต้นกับ ${m[1]} แล้วหรือยัง`],
+  [/^Why people choose (.+)$/, (m) => `ทำไมคนถึงเลือก ${m[1]}`],
+  [/^Sample footer for a page built from the (.+) design tokens\.$/, (m) => `ส่วนท้ายตัวอย่างของหน้าที่สร้างจาก design tokens ของ ${m[1]}`],
+  [/^© 2026 (.+) \(sample\)\..*$/, (m) => `© 2026 ${m[1]} (ตัวอย่าง) ไม่เกี่ยวข้องหรือได้รับการรับรองจากแบรนด์ที่แสดง เป็นหน้าทั่วไปที่ใช้สี ตัวอักษร และมุมโค้งจาก DESIGN.md ไม่ใช่สำเนาของเว็บจริง`],
+  [/^(.+) is a sample publication that uses this brand's colors and type\.$/, (m) => `${m[1]} เป็นสิ่งพิมพ์ตัวอย่างที่ใช้สีและตัวอักษรของแบรนด์นี้`],
+  [/^Product · (\d+) min read$/, (m) => `ผลิตภัณฑ์ · อ่าน ${m[1]} นาที`],
+  [/^(\d+)h ago · (\d+) min$/, (m) => `${m[1]} ชม.ที่แล้ว · ${m[2]} นาที`],
+  [/^(\d+) min read$/, (m) => `อ่าน ${m[1]} นาที`], [/^(\d+) min$/, (m) => `${m[1]} นาที`], [/^6 min read$/, () => 'อ่าน 6 นาที'],
+  [/^0(\d) — (.+)$/, (m) => `0${m[1]} — ${m[2]}`],
+  [/^(\d)\. (.+)$/, (m) => `${m[1]}. ${m[2]}`],
+  [/^From \$(.+)$/, (m) => `เริ่มต้น $${m[1]}`],
+  [/^Scroll down: .*$/, () => ''],
+  [/^ Scroll down: the header shrinks.*$/, () => ' ลองเลื่อนลง: แถบเมนูจะหดลงและแถบด้านบนจะแสดงว่าอ่านไปถึงไหนแล้ว']
+];
+const TH_BODY_EN = new Map(ARTICLES.map(([t, e], i) => [t, TH_ARTICLES[i][0]]).concat(ARTICLES.map(([t, e], i) => [e, TH_ARTICLES[i][1]])));
+const TH_TAILS = [
+  ['The best teams treat their routines like products: they test them, measure them and remove whatever does not help.', 'ทีมที่ดีที่สุดมองกิจวัตรเหมือนผลิตภัณฑ์ คือทดสอบ วัดผล และตัดสิ่งที่ไม่ช่วยออก'],
+  ['This guide covers the essentials in the order most readers need them, so you can stop whenever you have what you came for.', 'คู่มือนี้เรียงสิ่งจำเป็นตามลำดับที่ผู้อ่านส่วนใหญ่ต้องการ คุณจึงหยุดอ่านเมื่อได้สิ่งที่ต้องการแล้วได้ทุกเมื่อ'],
+  ['The details matter: small decisions, repeated every day, are what people end up remembering about a product.', 'รายละเอียดสำคัญ: การตัดสินใจเล็กๆ ที่ทำซ้ำทุกวัน คือสิ่งที่คนจดจำเกี่ยวกับผลิตภัณฑ์']
+];
+const unesc = (s) => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+function trText(raw) {
+  const k = unesc(raw.trim());
+  if (TH[k] !== undefined) return TH[k];
+  if (TH_BODY_EN.has(k)) return TH_BODY_EN.get(k);
+  for (const [re, fn] of TH_PATTERNS) { const m = k.match(re); if (m) return fn(m); }
+  // article lede followed by an extra English sentence: translate the known first part
+  for (const [en, th] of TH_BODY_EN) if (k.startsWith(en + ' ')) return th + ' ' + trText(k.slice(en.length + 1));
+  let out = k; for (const [en, th] of TH_TAILS) out = out.replace(en, th);
+  return out;
+}
+function toThai(html) {
+  return html
+    .replace(/>([^<>]+)</g, (m, t) => { if (!t.trim()) return m; const k = t.trim(), tr = trText(k); return tr === unesc(k) ? m : '>' + t.replace(k, esc(tr)) + '<'; })
+    .replace(/(placeholder|aria-label)="([^"]*)"/g, (m, a, v) => { const tr = trText(v); return tr === unesc(v) ? m : `${a}="${esc(tr)}"`; });
+}
+
 const RENDER = { hero: heroLayout, single: singleLayout, two: twoLayout, three: threeLayout, 'sidebar-left': sidebarLeftLayout, 'sidebar-right': sidebarRightLayout, split: splitLayout, 'f-pattern': fPatternLayout, 'z-pattern': zPatternLayout, 'card-grid': cardGridLayout, 'full-hero': fullHeroLayout, 'sticky-header': stickyHeaderLayout, 'sticky-footer': stickyFooterLayout, masonry: masonryLayout };
-export function renderLayout(key, M) { return (RENDER[key] || heroLayout)(M); }
+export function renderLayout(key, M) {
+  const fn = RENDER[key] || heroLayout;
+  return M.lang === 'th' && M.th ? toThai(fn({ ...M, ...M.th })) : fn(M);
+}
 
 /** Small behaviours (all optional): collapse sidebar, font size, filters, sticky shrink + progress, countdown. */
 export function activate(root) {

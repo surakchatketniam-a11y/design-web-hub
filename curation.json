@@ -12,9 +12,14 @@
     "retro": "ย้อนยุค"
   },
   "uses": {
+    "food": "ร้านอาหาร / คาเฟ่",
+    "health": "คลินิก / สุขภาพ",
+    "edu": "โรงเรียน / คอร์สเรียน",
+    "trade": "รับเหมา / บริการช่าง",
+    "gov": "หน่วยงาน / องค์กร",
     "saas": "เว็บผลิตภัณฑ์ / SaaS",
     "portfolio": "พอร์ตโฟลิโอ / ครีเอทีฟ",
-    "shop": "ร้านค้า / สินค้า",
+    "shop": "ร้านค้าออนไลน์ / สินค้า",
     "media": "บล็อก / สื่อ",
     "tool": "แดชบอร์ด / เครื่องมือ",
     "fin": "การเงิน / ธุรกรรม",
@@ -30,7 +35,9 @@
       ],
       "uses": [
         "shop",
-        "brand"
+        "brand",
+        "food",
+        "health"
       ]
     },
     "airtable": {
@@ -52,7 +59,8 @@
       ],
       "uses": [
         "shop",
-        "brand"
+        "brand",
+        "health"
       ]
     },
     "binance": {
@@ -74,7 +82,9 @@
       ],
       "uses": [
         "brand",
-        "shop"
+        "shop",
+        "trade",
+        "gov"
       ]
     },
     "bmw-m": {
@@ -105,7 +115,8 @@
         "warm"
       ],
       "uses": [
-        "saas"
+        "saas",
+        "health"
       ]
     },
     "claude": {
@@ -116,7 +127,8 @@
       ],
       "uses": [
         "saas",
-        "media"
+        "media",
+        "edu"
       ]
     },
     "clay": {
@@ -126,7 +138,9 @@
         "warm"
       ],
       "uses": [
-        "saas"
+        "saas",
+        "food",
+        "edu"
       ]
     },
     "clickhouse": {
@@ -157,7 +171,8 @@
         "minimal"
       ],
       "uses": [
-        "fin"
+        "fin",
+        "gov"
       ]
     },
     "composio": {
@@ -232,7 +247,8 @@
       ],
       "uses": [
         "saas",
-        "portfolio"
+        "portfolio",
+        "edu"
       ]
     },
     "framer": {
@@ -264,7 +280,9 @@
       ],
       "uses": [
         "brand",
-        "shop"
+        "shop",
+        "trade",
+        "gov"
       ]
     },
     "ibm": {
@@ -275,7 +293,9 @@
       ],
       "uses": [
         "brand",
-        "docs"
+        "docs",
+        "trade",
+        "gov"
       ]
     },
     "intercom": {
@@ -285,7 +305,8 @@
         "editorial"
       ],
       "uses": [
-        "saas"
+        "saas",
+        "health"
       ]
     },
     "kraken": {
@@ -294,7 +315,8 @@
         "minimal"
       ],
       "uses": [
-        "fin"
+        "fin",
+        "gov"
       ]
     },
     "lamborghini": {
@@ -327,7 +349,9 @@
       ],
       "uses": [
         "saas",
-        "portfolio"
+        "portfolio",
+        "food",
+        "health"
       ]
     },
     "mastercard": {
@@ -338,7 +362,8 @@
       ],
       "uses": [
         "brand",
-        "fin"
+        "fin",
+        "gov"
       ]
     },
     "meta": {
@@ -380,7 +405,8 @@
       ],
       "uses": [
         "saas",
-        "tool"
+        "tool",
+        "edu"
       ]
     },
     "mistral.ai": {
@@ -434,7 +460,8 @@
       ],
       "uses": [
         "saas",
-        "tool"
+        "tool",
+        "edu"
       ]
     },
     "nvidia": {
@@ -477,7 +504,8 @@
       ],
       "uses": [
         "portfolio",
-        "media"
+        "media",
+        "food"
       ]
     },
     "playstation": {
@@ -499,7 +527,8 @@
       ],
       "uses": [
         "saas",
-        "docs"
+        "docs",
+        "edu"
       ],
       "tone": "light"
     },
@@ -522,7 +551,8 @@
       ],
       "uses": [
         "brand",
-        "shop"
+        "shop",
+        "trade"
       ]
     },
     "replicate": {
@@ -640,7 +670,8 @@
       ],
       "uses": [
         "shop",
-        "brand"
+        "brand",
+        "food"
       ]
     },
     "stripe": {
@@ -652,7 +683,8 @@
       "uses": [
         "saas",
         "fin",
-        "docs"
+        "docs",
+        "gov"
       ]
     },
     "supabase": {
@@ -718,7 +750,8 @@
       ],
       "uses": [
         "brand",
-        "saas"
+        "saas",
+        "trade"
       ]
     },
     "vercel": {
@@ -739,7 +772,8 @@
       ],
       "uses": [
         "brand",
-        "shop"
+        "shop",
+        "trade"
       ]
     },
     "voltagent": {
@@ -813,7 +847,8 @@
       ],
       "uses": [
         "saas",
-        "tool"
+        "tool",
+        "edu"
       ]
     }
   }
