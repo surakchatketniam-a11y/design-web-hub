@@ -458,6 +458,7 @@ function apply(d) {
   const y = window.scrollY; if (cleanup) cleanup();
   document.documentElement.style.cssText = d.style; document.documentElement.className = d.classes + ' framed'; document.body.className = d.dark ? 'is-dark' : '';
   app.innerHTML = renderLayout(d.layout, d.model); cleanup = activate(app); window.scrollTo(0, y);
+  parent.postMessage({ type: 'applied' }, location.origin);
 }
 window.addEventListener('message', (e) => { if (e.origin !== location.origin) return; const d = e.data; if (d && d.type === 'mix') apply(d); });
 parent.postMessage({ type: 'ready' }, location.origin);

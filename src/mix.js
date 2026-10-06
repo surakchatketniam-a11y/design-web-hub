@@ -5,6 +5,14 @@
   if (!root) return;
   var $ = function (id) { return document.getElementById(id); };
 
+  // Handshake with the preview frame must survive any load order: listen from the start, and keep re-sending until the frame confirms it drew.
+  var acked = false, resend = null;
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin || !e.data) return;
+    if (e.data.type === 'applied') acked = true;
+    else if (e.data.type === 'ready' && resend) resend();
+  });
+
   /* ---------- small color helpers ---------- */
   function parseColor(v) {
     v = String(v || '').trim();
@@ -85,18 +93,17 @@
     }
 
     /* ----- preview iframe ----- */
-    var frame = $('mxFrame'), ready = false, raf = 0;
+    var frame = $('mxFrame'), raf = 0;
     function model(E) {
       var m = Object.assign({}, data.models[st.cat]);
       m.name = st.n || 'Your Brand'; m.slug = 'mix'; m.hasBand = !!E.c.hasBand; m.tileCount = E.classes.indexOf('tone-tiles') >= 0 ? E.c.tileCount : 0; m.lightPriOnDark = false;
       return m;
     }
     function send(E) {
-      if (!ready || !frame.contentWindow) return;
+      if (!frame.contentWindow) return;
       var style = Object.keys(E.v).map(function (k) { return '--' + k + ':' + E.v[k]; }).join(';');
       frame.contentWindow.postMessage({ type: 'mix', style: style, classes: E.classes.join(' '), dark: E.c.dark, layout: st.l, model: model(E) }, location.origin);
     }
-    window.addEventListener('message', function (e) { if (e.origin === location.origin && e.data && e.data.type === 'ready') { ready = true; update(); } });
 
     /* ----- little previews under each select ----- */
     function swatches(b) { return ['bg', 'pri', 'band1', 'soft1', 'a1', 'a2'].map(function (k) { return '<i style="background:' + esc(b.vars[k] || '#ddd') + '"></i>'; }).join(''); }
@@ -267,6 +274,9 @@
     $('mxCopyPrompt').addEventListener('click', function () { copyText($('mxPromptText').value).then(function () { toast('คัดลอกคำสั่งแล้ว'); }, function () { toast('คัดลอกไม่สำเร็จ'); }); });
     $('mxShare').addEventListener('click', function () { copyText(location.href).then(function () { toast('คัดลอกลิงก์การผสมนี้แล้ว'); }, function () { toast('คัดลอกไม่สำเร็จ'); }); });
 
+    resend = function () { if (last) send(last); };
     syncInputs(); update();
+    // the frame may not have run its script yet (slow network): retry until it answers "applied"
+    (function ensure(n) { if (acked || n > 60) return; resend(); setTimeout(function () { ensure(n + 1); }, 400); })(0);
   }
 })();
