@@ -1,0 +1,49 @@
+{
+  "id": "cafe-coffee-shop",
+  "title": "ร้านกาแฟ / คาเฟ่",
+  "business": "กาแฟบ้านสวน (ร้านสมมติ)",
+  "brief_file": "prompts.md",
+  "generator": "OpenAI Codex (GPT-5) สร้างทั้งสองหน้าและภาพ hero (เครื่องมือสร้างภาพในตัว Codex)",
+  "created": "2026-10-07",
+  "observation": [
+    "หน้า “ก่อน” ที่สั่งแค่ประโยคเดียวก็ได้ดีไซน์ที่มีเอกลักษณ์ ไม่ได้ดูเป็นหน้าตา AI ทั่วไปเสมอไป ลองดูทั้งสองหน้าแล้วตัดสินเอง",
+    "ความต่างที่ตรวจได้จากซอร์ส: “ก่อน” ใช้หัวข้อไทยตัวเอียงและเว้นระยะตัวอักษรติดลบ ส่วน “หลัง” ใช้ค่าสี ฟอนต์ และระยะห่างจาก tokens.css และไม่ใช้ตัวเอียงกับภาษาไทย",
+    "เนื้อหาต่างกันด้วย: “หลัง” มีตารางชุดโปรพร้อมราคา FAQ และช่องรีวิวที่ไม่แต่งเนื้อหาปลอม เพราะคำสั่ง “หลัง” ระบุส่วนเหล่านี้ไว้ ไม่ได้เกิดจากไฟล์ DESIGN.md อย่างเดียว"
+  ],
+  "items": [
+    {
+      "slug": "before",
+      "label": "ก่อน: คำสั่งสั้นประโยคเดียว",
+      "style": null,
+      "html": "index.html",
+      "extra_files": ["styles.css", "script.js", "assets"],
+      "shots": {
+        "desktop_fold": "shots/before-desktop-fold.png",
+        "desktop_full": "shots/before-desktop-full.png",
+        "mobile_fold": "shots/before-mobile-fold.png",
+        "mobile_full": "shots/before-mobile-full.png"
+      },
+      "notes": "Playfair Display + IBM Plex Sans Thai + DM Mono, หัวข้อไทยตัวเอียง, เขียวป่าคู่ส้มดินเผาบนพื้นครีม, ตราประทับ “Brewed with care”, การ์ดเมนู 3 ใบเรียงกัน"
+    },
+    {
+      "slug": "after-mix",
+      "label": "หลัง: แนบ DESIGN.md จากสูตรผสม",
+      "name": "สูตรผสม (Claude + Expo + Spotify + Stripe)",
+      "style": null,
+      "mix_link": "/mix/?c=claude&t=expo&s=spotify&f=stripe&n=%E0%B8%81%E0%B8%B2%E0%B9%81%E0%B8%9F%E0%B8%9A%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%AA%E0%B8%A7%E0%B8%99",
+      "html": "after.html",
+      "extra_files": ["after.css", "after.js", "tokens.css", "assets"],
+      "files": [
+        { "label": "DESIGN.md ที่แนบ", "path": "DESIGN.md" },
+        { "label": "tokens.css ที่แนบ", "path": "tokens.css" }
+      ],
+      "shots": {
+        "desktop_fold": "shots/after-desktop-fold.png",
+        "desktop_full": "shots/after-desktop-full.png",
+        "mobile_fold": "shots/after-mobile-fold.png",
+        "mobile_full": "shots/after-mobile-full.png"
+      },
+      "notes": "สีจาก Claude (ครีมกับส้ม #cc785c, แถบเข้ม #252320), ฟอนต์ Anuphan + Inter, ตารางชุดโปรและรายการแทนการ์ด 3 ใบ, FAQ เปิดทีละข้อ, ไอคอน SVG เส้นเรียบ"
+    }
+  ]
+}

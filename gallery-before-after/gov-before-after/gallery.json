@@ -1,0 +1,46 @@
+{
+  "id": "gov-tax-office",
+  "title": "หน่วยงาน / องค์กร",
+  "business": "สำนักงานใจดีพื้นที่พิจิตร (หน่วยงานสมมุติ ไม่ใช่หน่วยงานจริง)",
+  "brief_file": "prompts.md",
+  "generator": "Gemini 3.8 Flash (High) บน Antigravity (ตามที่ Gemini ระบุเอง) สร้างทั้งสองหน้า ไม่ใช้ภาพประกอบ",
+  "created": "2026-10-07",
+  "observation": [
+    "หน้า “ก่อน” เป็นหน้าตา AI สไตล์ภาครัฐทั่วไปชัดเจน: พื้นหลัง gradient น้ำเงิน การ์ดมีเงา ปุ่มหลายสี และไอคอน FontAwesome",
+    "หน้า “หลัง” ใช้พื้นขาวแบนราบไม่มีเงา น้ำเงินสีเดียว ปุ่มพิลล์ ไอคอน SVG เส้น และฟอนต์ Anuphan + Inter ตามไฟล์ที่แนบ ส่วนที่เห็นชัดคือโครงหน้าเปลี่ยนจากการ์ดและทางลัดเป็นแถบตัวเลข ตารางเปรียบเทียบ และรายการ",
+    "เทียบกันตรงๆ ไม่ได้ทุกอย่าง: “ก่อน” เป็นพอร์ทัลแบบแท็บ (ภาพ “ทั้งหน้า” แสดงเฉพาะแท็บหน้าแรก) ส่วน “หลัง” รวมทุกบริการเป็นหน้ายาวหน้าเดียว และ “หลัง” สร้างต่อจาก “ก่อน”",
+    "ผลงานของ Gemini ถูกแก้ด้วยมือเล็กน้อยก่อนถ่ายภาพ (โดยผู้ช่วย Claude ตามคำสั่งผู้ดูแลเว็บนี้): “หลัง” แก้เมนูบนเดสก์ท็อปที่ลิงก์ชิดกัน “ก่อน” แทนตัวเลขสถิติสมมติและข้อความที่อ้างกรมสรรพากร รายละเอียดอยู่ในหัวข้อความโปร่งใส"
+  ],
+  "items": [
+    {
+      "slug": "before",
+      "label": "ก่อน: คำสั่งสั้นประโยคเดียว",
+      "style": null,
+      "shots": {
+        "desktop_fold": "shots/before-desktop-fold.png",
+        "desktop_full": "shots/before-desktop-full.png",
+        "mobile_fold": "shots/before-mobile-fold.png",
+        "mobile_full": "shots/before-mobile-full.png"
+      },
+      "notes": "พื้นหลัง gradient น้ำเงิน-ดำ, การ์ดมีเงา, ปุ่มส้ม/ฟ้าหลายสี, ไอคอน FontAwesome, ฟอนต์ Prompt + Sarabun, แถบเตือน “โครงการจำลอง” เพิ่มภายหลัง"
+    },
+    {
+      "slug": "after-mix",
+      "label": "หลัง: แนบ DESIGN.md จากสูตรผสม",
+      "name": "สูตรผสม (IBM + Stripe)",
+      "style": null,
+      "mix_link": "/mix/?c=ibm&t=stripe&s=stripe&f=ibm",
+      "files": [
+        { "label": "DESIGN.md ที่แนบ", "path": "DESIGN.md" },
+        { "label": "tokens.css ที่แนบ", "path": "tokens.css" }
+      ],
+      "shots": {
+        "desktop_fold": "shots/after-desktop-fold.png",
+        "desktop_full": "shots/after-desktop-full.png",
+        "mobile_fold": "shots/after-mobile-fold.png",
+        "mobile_full": "shots/after-mobile-full.png"
+      },
+      "notes": "สีจาก IBM (ขาว/ดำ/น้ำเงิน #0f62fe/เทา #f4f4f4), ตัวอักษรและรูปทรงจาก Stripe (ปุ่มพิลล์, การ์ด 12px), แบนราบไม่มีเงา, ฟอนต์ Anuphan + Inter, ไอคอน SVG เส้น"
+    }
+  ]
+}

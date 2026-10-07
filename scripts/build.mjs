@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Static site generator: content/<slug>/DESIGN.md  ->  public/ (no database, no runtime server).
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, copyFileSync, rmSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, copyFileSync, rmSync, statSync, cpSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
@@ -415,61 +415,79 @@ function main() {
     <div class="wiz-q"><b>2. อยากให้คนรู้สึกอย่างไร <small class="muted">(ไม่บังคับ)</small></b><div class="chips" role="group" aria-label="ความรู้สึก">${Object.entries(VIBES).map(([k, l]) => `<button type="button" class="chip" data-wq="vibes" data-v="${k}" aria-pressed="false">${esc(l)}</button>`).join('')}</div></div>
     <div class="wiz-q"><b>3. สว่างหรือมืด <small class="muted">(ไม่บังคับ)</small></b><div class="chips" role="group" aria-label="โทนสี"><button type="button" class="chip" data-wq="tone" data-v="light" aria-pressed="false">โทนสว่าง</button><button type="button" class="chip" data-wq="tone" data-v="dark" aria-pressed="false">โทนมืด</button></div></div>
     <div id="wizOut" aria-live="polite" hidden></div></section>`;
-  // before/after gallery: data, screenshots (WebP) and the generated pages live in gallery-before-after/ (made outside the build); the build only lays them out
+  // before/after gallery: each set (a folder with gallery.json, prompts.md, generated pages and WebP shots) lives in gallery-before-after/ and is made outside the build; the build only lays them out
   const GAL_DIR = join(ROOT, 'gallery-before-after');
   let galTeaser = '', galleryPage = null;
-  if (existsSync(join(GAL_DIR, 'gallery.json'))) {
-    const G = JSON.parse(readFileSync(join(GAL_DIR, 'gallery.json'), 'utf8'));
+  const webpSize = (f) => {
+    const b = readFileSync(f), t = b.toString('ascii', 12, 16);
+    if (t === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
+    if (t === 'VP8L') { const v = b.readUInt32LE(21); return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 }; }
+    return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+  };
+  function loadGallerySet(dir) {
+    const G = JSON.parse(readFileSync(join(dir, 'gallery.json'), 'utf8'));
     const gout = join(OUT, 'gallery', G.id);
     mkdirSync(gout, { recursive: true });
-    const webpSize = (f) => {
-      const b = readFileSync(f), t = b.toString('ascii', 12, 16);
-      if (t === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
-      if (t === 'VP8L') { const v = b.readUInt32LE(21); return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 }; }
-      return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
-    };
     const items = G.items.map((it) => {
       const shots = {};
       for (const [k, rel] of Object.entries(it.shots || {})) {
-        const webp = rel.replace(/\.png$/i, '.webp'), src = join(GAL_DIR, webp);
-        if (!existsSync(src)) { problems.push(`gallery: ไม่พบภาพ ${webp} (แปลง PNG เป็น WebP ก่อน)`); continue; }
+        const webp = rel.replace(/\.png$/i, '.webp'), src = join(dir, webp);
+        if (!existsSync(src)) { problems.push(`gallery ${G.id}: ไม่พบภาพ ${webp} (แปลง PNG เป็น WebP ก่อน)`); continue; }
         mkdirSync(dirname(join(gout, webp)), { recursive: true });
         copyFileSync(src, join(gout, webp));
         shots[k] = { src: `${G.id}/${webp}`, ...webpSize(src) };
       }
       let html = '';
-      if (it.html && existsSync(join(GAL_DIR, it.html))) { copyFileSync(join(GAL_DIR, it.html), join(gout, it.html)); html = `${G.id}/${it.html}`; }
-      const name = it.style ? displayName(it.style) : '';
-      return { slug: it.slug, label: it.label, style: it.style || null, name, notes: it.notes || '', html, mix: it.mix_link ? '../' + it.mix_link.replace(/^\//, '') : '', shots };
+      if (it.html && existsSync(join(dir, it.html))) { copyFileSync(join(dir, it.html), join(gout, it.html)); html = `${G.id}/${it.html}`; }
+      for (const f of it.extra_files || []) if (existsSync(join(dir, f))) cpSync(join(dir, f), join(gout, f), { recursive: true });
+      const files = (it.files || []).filter((f) => existsSync(join(dir, f.path))).map((f) => { copyFileSync(join(dir, f.path), join(gout, f.path)); return { label: f.label, href: `${G.id}/${f.path}` }; });
+      const isBefore = !it.style && !it.mix_link;
+      return { slug: it.slug, label: it.label, isBefore, style: it.style || null, name: it.name || (it.style ? displayName(it.style) : ''), notes: it.notes || '', html, files, mix: it.mix_link ? '../' + it.mix_link.replace(/^\//, '') : '', shots };
     });
-    const before = items.find((x) => !x.style), afters = items.filter((x) => x.style);
-    // prompts.md: 1st fenced block = shared brief, 2nd = "before" addition, 3rd = "after" addition; the bullets under "หมายเหตุเรื่องความโปร่งใส" are shown as-is
-    const md = existsSync(join(GAL_DIR, G.brief_file || 'prompts.md')) ? readFileSync(join(GAL_DIR, G.brief_file || 'prompts.md'), 'utf8').replace(/\r/g, '') : '';
+    // prompts.md: 1st fenced block = shared brief, 2nd = "before" (may contain [โจทย์ร่วม]), 3rd = "after"; bullets under "หมายเหตุเรื่องความโปร่งใส" are shown as-is
+    const mdFile = join(dir, G.brief_file || 'prompts.md');
+    const md = existsSync(mdFile) ? readFileSync(mdFile, 'utf8').replace(/\r/g, '') : '';
     const blocks = [...md.matchAll(/```\n([\s\S]*?)```/g)].map((m) => m[1].trim());
     const brief = blocks[0] || '', fill = (t) => (t || '').replace('[โจทย์ร่วม]', brief);
     const notes = ((md.split(/##\s*หมายเหตุเรื่องความโปร่งใส[^\n]*\n/)[1] || '').split('\n').filter((l) => /^-\s/.test(l)).map((l) => l.replace(/^-\s*/, '')));
-    if (before && afters.length) {
-      const first = afters[0], sh = (it, k) => it.shots[k];
-      galTeaser = `<section class="wrap gal-teaser" id="before-after" aria-labelledby="galH"><h2 id="galH">AI ตัวเดียวกัน โจทย์เดียวกัน ต่างกันแค่ไฟล์ DESIGN.md</h2>
+    return { G, items, before: items.find((x) => x.isBefore), afters: items.filter((x) => !x.isBefore), brief, beforePrompt: fill(blocks[1]), afterPrompt: fill(blocks[2]), notes };
+  }
+  const galSets = [];
+  if (existsSync(GAL_DIR)) {
+    const dirs = [GAL_DIR, ...readdirSync(GAL_DIR).map((d) => join(GAL_DIR, d)).filter((d) => d !== join(GAL_DIR, 'shots') && statSync(d).isDirectory())];
+    for (const d of dirs) if (existsSync(join(d, 'gallery.json'))) { const st = loadGallerySet(d); if (st.before && st.afters.length) galSets.push(st); else problems.push(`gallery ${d}: ต้องมีรายการ "ก่อน" 1 รายการและ "หลัง" อย่างน้อย 1 รายการ`); }
+  }
+  if (galSets.length) {
+    const sh = (it, k) => it.shots[k];
+    const { G, before, afters } = galSets[0], first = afters[0];
+    galTeaser = `<section class="wrap gal-teaser" id="before-after" aria-labelledby="galH"><h2 id="galH">AI ตัวเดียวกัน โจทย์เดียวกัน ต่างกันแค่ไฟล์ DESIGN.md</h2>
     <p class="muted">โจทย์: ${esc(G.title)} (${esc(G.business)}) ซ้ายคือสั่งแบบปกติ ขวาคือแนบไฟล์ DESIGN.md ของสไตล์ ${esc(first.name)}</p>
     <div class="gal-cmp">${[[before, 'ก่อน: ไม่มี DESIGN.md', 'หน้าเว็บที่ AI สร้างโดยไม่มี DESIGN.md'], [first, `หลัง: แนบ DESIGN.md (${first.name})`, `หน้าเว็บที่ AI สร้างโดยแนบ DESIGN.md สไตล์ ${first.name}`]].map(([it, cap, alt]) => `<a class="gal-fig" href="gallery/"><figure><div class="gal-shot desktop fold"><img src="gallery/${esc(sh(it, 'desktop_fold').src)}" width="${sh(it, 'desktop_fold').w}" height="${sh(it, 'desktop_fold').h}" alt="${esc(alt)}" loading="lazy" decoding="async"></div><figcaption>${esc(cap)}</figcaption></figure></a>`).join('')}</div>
-    <p class="gal-more"><a class="btn primary" href="gallery/">ดูก่อน–หลังทั้งชุด · ${afters.length} สไตล์ · ดูแบบมือถือได้ →</a><span class="muted">ร้านสมมติ สร้างโดย Claude ครั้งเดียว ผลของคุณอาจต่างไป</span></p></section>`;
-      const opts = (arr, attr, on) => arr.map(([k, l], i) => `<button type="button" class="chip${i === on ? ' on' : ''}" data-${attr}="${k}" aria-pressed="${i === on}">${esc(l)}</button>`).join('');
-      const pbox = (title, text) => `<article class="pcard"><div class="phead"><h3>${esc(title)}</h3></div><pre>${esc(text)}</pre><button class="btn sm" type="button" data-copy="${esc(text)}">คัดลอกคำสั่ง</button></article>`;
-      const data = JSON.stringify({ before, afters }).replace(/</g, '\\u003c');
-      galleryPage = PAGE(`ก่อน–หลัง — ${SITE.title}`, `<section class="hero"><div class="wrap"><p class="eyebrow">ดูผลจริง · ${esc(G.title)}</p><h1>ก่อน–หลัง</h1><p class="lead">AI ตัวเดียวกัน โจทย์เดียวกัน ต่างกันแค่ว่าแนบไฟล์ DESIGN.md หรือไม่ เลือกสไตล์ ดูแบบเดสก์ท็อปหรือมือถือ แล้วเทียบกันเอง</p></div></section>
+    <p class="gal-more"><a class="btn primary" href="gallery/">ดูก่อน–หลังทั้งหมด · ${galSets.length} ชุดโจทย์ · ดูแบบมือถือได้ →</a><span class="muted">ร้านสมมติ สร้างโดย AI ผลของคุณอาจต่างไป</span></p></section>`;
+    const opts = (arr, attr, on) => arr.map(([k, l], i) => `<button type="button" class="chip${i === on ? ' on' : ''}" data-${attr}="${k}" aria-pressed="${i === on}">${esc(l)}</button>`).join('');
+    const pbox = (title, text) => `<article class="pcard"><div class="phead"><h3>${esc(title)}</h3></div><pre>${esc(text)}</pre><button class="btn sm" type="button" data-copy="${esc(text)}">คัดลอกคำสั่ง</button></article>`;
+    const panels = galSets.map((st, i) => {
+      const { G: g, brief, beforePrompt, afterPrompt, notes } = st;
+      const prompts = [];
+      if (brief && beforePrompt && beforePrompt !== brief) prompts.push(pbox('โจทย์ร่วม (ใช้ทุกหน้า)', brief));
+      prompts.push(pbox('ก่อน: ไม่มี DESIGN.md', beforePrompt), pbox('หลัง: แนบ DESIGN.md + tokens.css', afterPrompt));
+      return `<div class="gal-panel" data-panel="${esc(g.id)}"${i ? ' hidden' : ''}><p class="muted gal-lead">${esc(g.business)} · ${esc(g.title)} · สร้างเมื่อ ${esc(g.created)}</p>
+    ${(g.observation || []).length ? `<div class="gal-obs"><h2>ข้อสังเกตจากชุดนี้</h2><ul>${g.observation.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+    <div class="gal-trust"><h2>ความโปร่งใส</h2><ul>${[`<b>สร้างโดย:</b> ${esc(g.generator)}`, ...notes.map(esc), 'ผลของ AI แต่ละครั้งไม่เหมือนกัน นี่คือตัวอย่างหนึ่งครั้ง ไม่ใช่การรับประกันผล', 'ร้านนี้เป็นร้านสมมติ ชื่อ ข้อมูลติดต่อ และตัวเลขทั้งหมดเป็นข้อมูลตัวอย่าง', 'ชื่อสไตล์ที่ระบุคือไฟล์ DESIGN.md ที่แนบ เป็นการวิเคราะห์เชิงแรงบันดาลใจ ไม่ใช่เว็บหรือไฟล์ทางการของแบรนด์นั้น'].map((x) => `<li>${x}</li>`).join('')}</ul></div>
+    <h2>คำสั่งที่ใช้</h2><p class="muted">ลองสั่งซ้ำกับเครื่องมือของคุณเองได้ ไฟล์ DESIGN.md และ tokens.css ของแต่ละสไตล์ดาวน์โหลดได้จากหน้าสไตล์นั้น หรือจากปุ่มใต้ภาพ</p>
+    <div class="pgrid">${prompts.join('')}</div></div>`;
+    }).join('');
+    const data = JSON.stringify({ sets: galSets.map((st) => ({ id: st.G.id, title: st.G.title, before: st.before, afters: st.afters })) }).replace(/</g, '\\u003c');
+    galleryPage = PAGE(`ก่อน–หลัง — ${SITE.title}`, `<section class="hero"><div class="wrap"><p class="eyebrow">ดูผลจริง · ${galSets.length} ชุดโจทย์</p><h1>ก่อน–หลัง</h1><p class="lead">AI ตัวเดียวกัน โจทย์เดียวกัน เทียบหน้าที่สั่งแบบปกติกับหน้าที่แนบไฟล์ DESIGN.md เลือกชุดโจทย์ สไตล์ และดูแบบเดสก์ท็อปหรือมือถือ แล้วเทียบกันเอง</p></div></section>
   <section class="wrap gal" id="gal"><div class="gal-ctrl">
-    <div class="fgroup"><span class="flabel">สไตล์ที่แนบ</span><div class="chips" role="group" aria-label="สไตล์ที่แนบ">${afters.map((a, i) => `<button type="button" class="chip${i === 0 ? ' on' : ''}" data-gs="${esc(a.slug)}" aria-pressed="${i === 0}">${esc(a.name)}</button>`).join('')}</div></div>
+    ${galSets.length > 1 ? `<div class="fgroup"><span class="flabel">ชุดโจทย์</span><div class="chips" role="group" aria-label="ชุดโจทย์" id="galSets"></div></div>` : ''}
+    <div class="fgroup"><span class="flabel">หน้า “หลัง”</span><div class="chips" role="group" aria-label="หน้าหลัง" id="galStyles"></div></div>
     <div class="fgroup"><span class="flabel">อุปกรณ์</span><div class="chips" role="group" aria-label="อุปกรณ์">${opts([['desktop', 'เดสก์ท็อป'], ['mobile', 'มือถือ']], 'gd', 0)}</div></div>
     <div class="fgroup"><span class="flabel">มุมมอง</span><div class="chips" role="group" aria-label="มุมมอง">${opts([['fold', 'หน้าจอแรก'], ['full', 'ทั้งหน้า (เลื่อนดูในกรอบ)']], 'gv', 0)}</div></div></div>
-    <div class="gal-cmp gal-big"><figure class="gal-fig"><figcaption><b>${esc(before.label)}</b><small>${esc(before.notes)}</small></figcaption><div class="gal-shot desktop fold" id="galBeforeBox"><img id="galBeforeImg" alt="" decoding="async"></div><div class="actions">${before.html ? `<a class="btn sm" href="${esc(before.html)}" target="_blank" rel="noopener">เปิดหน้า HTML จริง ↗</a>` : ''}</div></figure>
+    <div class="gal-cmp gal-big"><figure class="gal-fig"><figcaption><b id="galBeforeLabel"></b><small id="galBeforeNotes"></small></figcaption><div class="gal-shot desktop fold" id="galBeforeBox"><img id="galBeforeImg" alt="" decoding="async"></div><div class="actions" id="galBeforeActs"></div></figure>
     <figure class="gal-fig"><figcaption><b id="galAfterLabel"></b><small id="galAfterNotes"></small></figcaption><div class="gal-shot desktop fold" id="galAfterBox"><img id="galAfterImg" alt="" decoding="async"></div><div class="actions" id="galAfterActs"></div></figure></div>
-    <p class="muted gal-lead">${esc(G.business)} · ${esc(G.title)} · สร้างเมื่อ ${esc(G.created)}</p>
-    <div class="gal-trust"><h2>ความโปร่งใส</h2><ul>${[`<b>สร้างโดย:</b> ${esc(G.generator)}`, ...notes.map(esc), 'ผลของ AI แต่ละครั้งไม่เหมือนกัน นี่คือตัวอย่างหนึ่งครั้ง ไม่ใช่การรับประกันผล', 'ร้านนี้เป็นร้านสมมติ เบอร์โทร LINE และตัวเลขทั้งหมดเป็นข้อมูลตัวอย่าง', 'ชื่อสไตล์ที่ระบุคือไฟล์ DESIGN.md ที่แนบ เป็นการวิเคราะห์เชิงแรงบันดาลใจ ไม่ใช่เว็บหรือไฟล์ทางการของแบรนด์นั้น'].map((x) => `<li>${x}</li>`).join('')}</ul></div>
-    <h2>คำสั่งที่ใช้</h2><p class="muted">ลองสั่งซ้ำกับเครื่องมือของคุณเองได้ ไฟล์ DESIGN.md และ tokens.css ของแต่ละสไตล์ดาวน์โหลดได้จากหน้าสไตล์นั้น</p>
-    <div class="pgrid">${pbox('โจทย์ร่วม (ใช้ทุกหน้า)', brief)}${pbox('ก่อน: ไม่มี DESIGN.md', fill(blocks[1]))}${pbox('หลัง: แนบ DESIGN.md + tokens.css', fill(blocks[2]))}</div></section>
+    ${panels}</section>
   <script type="application/json" id="galData">${data}</script><script src="../assets/gallery.js?v=${V.gallery}" defer></script>`, { depth: 1 });
-    }
   }
 
   // curated mix recipes: same simple header as the brand cards, painted with the colors the recipe takes from its color brand
