@@ -19,8 +19,10 @@
     if (el) { copy(el.getAttribute('data-copy')).then(function () { toast('คัดลอกแล้ว: ' + el.getAttribute('data-copy').slice(0, 40)); }, function () { toast('คัดลอกไม่สำเร็จ'); }); return; }
     var f = e.target.closest('[data-fetchcopy]');
     if (f) {
-      fetch(f.getAttribute('data-fetchcopy')).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
-        .then(copy).then(function () { toast('คัดลอกเนื้อหา DESIGN.md แล้ว'); }, function () { toast('คัดลอกไม่สำเร็จ'); });
+      var urls = f.getAttribute('data-fetchcopy').split(' ').filter(Boolean);
+      Promise.all(urls.map(function (u) { return fetch(u).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }); }))
+        .then(function (t) { return copy(urls.length > 1 ? t.map(function (x, i) { return '===== ' + urls[i].split('/').pop() + ' =====\n' + x; }).join('\n\n') : t[0]); })
+        .then(function () { toast(urls.length > 1 ? 'คัดลอก DESIGN.md + tokens.css แล้ว' : 'คัดลอกเนื้อหา DESIGN.md แล้ว'); }, function () { toast('คัดลอกไม่สำเร็จ'); });
     }
   });
 
