@@ -8,7 +8,7 @@ import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
 import { renderLanding, fontFor, categoryModel, fontPlan, fontsUrl, thaiStack, ALL_THAI_FONTS } from './lib/landing.mjs';
-import { tokenCss, designAddendum } from './lib/downloads.mjs';
+import { tokenCss, designAddendum, downloadView, verifyDownload } from './lib/downloads.mjs';
 import { LAYOUTS, WIRE } from '../src/layouts.mjs';
 import { buildPrompt, TOOLS } from '../src/prompt.mjs';
 
@@ -347,8 +347,11 @@ function main() {
     writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
     const dd = join(OUT, 'd', b.slug); mkdirSync(dd, { recursive: true });
     writeFileSync(join(dd, 'DESIGN.md'), b.raw.replace(/\s*$/, '') + designAddendum(b));
-    writeFileSync(join(dd, 'tokens.css'), tokenCss(b));
-    writeFileSync(join(dd, 'tokens.json'), JSON.stringify({ name: b.name, source: SITE.upstream, ...b.tokens, fonts: { display: b.fonts.display, body: b.fonts.body, thaiDisplay: b.fonts.thaiDisplay, thaiBody: b.fonts.thaiBody, note: 'Latin fonts have no Thai glyphs: use the Thai fonts for Thai content, body line-height >= 1.7, no letter-spacing.' } }, null, 2));
+    const cssText = tokenCss(b);
+    writeFileSync(join(dd, 'tokens.css'), cssText);
+    problems.push(...verifyDownload(b, cssText));
+    const dv = downloadView(b);
+    writeFileSync(join(dd, 'tokens.json'), JSON.stringify({ name: b.name, source: SITE.upstream, ...dv.tokens, ...(Object.keys(dv.proseColors).length ? { colorsFromText: dv.proseColors } : {}), fonts: { display: dv.fonts.display, body: dv.fonts.body, thaiDisplay: dv.fonts.thaiDisplay, thaiBody: dv.fonts.thaiBody, note: 'Latin fonts have no Thai glyphs: use the Thai fonts for Thai content, body line-height >= 1.7, no letter-spacing.' } }, null, 2));
   }
 
   // index

@@ -1,6 +1,7 @@
 // Builds the downloadable tokens.css and the DESIGN.md addendum for a brand.
 // Goal: tokens.css and DESIGN.md must never silently disagree (fonts, line-height, Thai rules).
-import { fontFor, fontsUrlFor, thaiStack } from './landing.mjs';
+import { fontFor, fontsUrlFor, thaiStack, fontPlan } from './landing.mjs';
+import { extractProseTokens, extractProseColors } from './legacy.mjs';
 
 const SAFE_CSS = /^[#\w().,%\s/+*-]+$/;
 const css = (v, fallback = '') => (typeof v === 'string' && SAFE_CSS.test(v) ? v : fallback);
@@ -37,14 +38,30 @@ export function fontRoles(b) {
 }
 const fontNote = (r) => (!r.orig || r.orig === "(not specified)" ? `not specified in DESIGN.md -> this file uses ${r.sub} (default)` : r.orig.toLowerCase() === r.sub.toLowerCase() ? `${r.orig} (same as DESIGN.md)` : `DESIGN.md says "${r.orig}" -> this file uses ${r.sub} (free substitute)`);
 
-export function tokenCss(b) {
+/**
+ * The brand as the downloads see it: YAML tokens first; whatever the YAML lacks (all of it for legacy files)
+ * is filled from the DESIGN.md prose so tokens.css does not silently omit values the document describes.
+ */
+export function downloadView(b) {
+  const p = extractProseTokens(b.body || ''), has = (o) => Object.keys(o || {}).length > 0;
+  const typography = has(b.tokens.typography) ? b.tokens.typography : p.typography;
+  const rounded = has(b.tokens.rounded) ? b.tokens.rounded : p.rounded;
+  const spacing = has(b.tokens.spacing) ? b.tokens.spacing : p.spacing;
+  const known = new Set(Object.values(b.tokens.colors).map((v) => String(v).toLowerCase()));
+  const proseColors = Object.fromEntries(Object.entries(extractProseColors(b.body || '')).filter(([k, v]) => !(k in b.tokens.colors) && !known.has(String(v).toLowerCase())));
+  const fromProse = [!has(b.tokens.typography) && has(p.typography) && 'typography', !has(b.tokens.rounded) && has(p.rounded) && 'radius', !has(b.tokens.spacing) && has(p.spacing) && 'spacing'].filter(Boolean);
+  return { ...b, tokens: { ...b.tokens, typography, rounded, spacing }, fonts: has(b.tokens.typography) ? b.fonts : fontPlan({ typography }), proseColors, fromProse };
+}
+
+export function tokenCss(b0) {
+  const b = downloadView(b0);
   const roles = fontRoles(b);
   const roleOf = (t) => roles.find((r) => !r.derived && r.orig === famName(t.fontFamily));
   const legacy = b.format !== 'tokens';
   const head = [`/* ${b.name} - design tokens (generated from DESIGN.md by DESIGN.md Hub, for learning)`,
     ' * Use THIS file for code; DESIGN.md explains when and why to use each token.',
     ' * If the two ever disagree, the values in this file win (fonts are substituted, see below).'];
-  if (legacy) head.push(" * NOTE: this brand's DESIGN.md has no YAML token block, so only COLORS were extracted from its text.", ' * Radius, spacing and type sizes are described in prose in DESIGN.md: read it, and use var(--color-...) from here.');
+  if (legacy) head.push(" * NOTE: this brand's DESIGN.md has no YAML token block. Colors, " + (b.fromProse.length ? b.fromProse.join(', ') : 'nothing else') + ' were read from its text (best effort):', ' * check DESIGN.md before relying on a value, and read the prose for anything missing here (e.g. component styles).');
   head.push(' * Fonts:', ...roles.map((r) => ` *   --font-${r.var}: ${fontNote(r)}`));
   if (Object.keys(b.tokens.typography).length) head.push(' * Thai: the :root:lang(th) block at the bottom zeroes letter-spacing and raises line-height. Set <html lang="th"> to enable it.');
   head.push(' */');
@@ -52,6 +69,7 @@ export function tokenCss(b) {
   for (const [k, v] of Object.entries(b.tokens.colors)) lines.push(`  --color-${k}: ${css(v, 'transparent')};`);
   for (const [k, v] of Object.entries(b.tokens.rounded)) if (typeof v === 'string') lines.push(`  --radius-${k}: ${css(v, '0')};`);
   for (const [k, v] of Object.entries(b.tokens.spacing)) if (typeof v === 'string') lines.push(`  --space-${k}: ${css(v, '0')};`);
+  if (Object.keys(b.proseColors).length) { lines.push('  /* colors that appear only in the DESIGN.md text, not in its YAML */'); for (const [k, v] of Object.entries(b.proseColors)) lines.push(`  --color-${k}: ${css(v, 'transparent')};`); }
   for (const r of roles) lines.push(`  --font-${r.var}: ${r.stack};`);
   lines.push(`  --font-thai-display: ${thaiStack(b.fonts.thaiDisplay)};`, `  --font-thai-body: ${thaiStack(b.fonts.thaiBody)};`);
   const thai = [];
@@ -77,12 +95,13 @@ export function tokenCss(b) {
 }
 
 /** Addendum appended to the downloadable DESIGN.md: relation to tokens.css, font substitutions, Thai rules. */
-export function designAddendum(b) {
+export function designAddendum(b0) {
+  const b = downloadView(b0);
   const f = b.fonts, same = f.thaiDisplay === f.thaiBody, roles = fontRoles(b);
   const url = fontsUrlFor(roles.map((r) => r.stack), [f.thaiDisplay, f.thaiBody]);
   const tokenLine = b.format === 'tokens'
     ? 'Every color, radius, spacing and type token above exists in tokens.css under the same name (`--color-*`, `--radius-*`, `--space-*`, `--text-<name>-size|weight|lh|tracking|font`).'
-    : 'This file has no YAML token block, so tokens.css only contains the colors found in the text. Radius, spacing and type sizes must be read from the prose above.';
+    : `This file has no YAML token block, so tokens.css was built from the text above (colors${b.fromProse.length ? ', ' + b.fromProse.join(', ') : ''}); values are best-effort, and anything the text describes only in words (component styles, shadows) is not in tokens.css.`;
   return `
 
 ## Using this file with tokens.css (added by DESIGN.md Hub)
@@ -104,4 +123,21 @@ The fonts above have no Thai glyphs. When the page content is Thai, pair them wi
 - Never apply letter-spacing (positive or negative) to Thai text. Do not use \`text-transform: uppercase\` or italics on Thai.
 - Keep body text at 16px or larger. Thai has no spaces between words, so let the browser wrap lines (\`overflow-wrap: break-word\`) and avoid fixed-width truncation.
 `;
+}
+
+/** Consistency check run at build time: returns human-readable problems when tokens.css and DESIGN.md could disagree. */
+export function verifyDownload(b0, cssText) {
+  const b = downloadView(b0), out = [], n = b.name;
+  const head = cssText.slice(0, cssText.indexOf(':root'));
+  for (const k of Object.keys(b.tokens.colors)) if (!cssText.includes(`--color-${k}:`)) out.push(`${n}: tokens.css ขาดสี ${k}`);
+  for (const k of Object.keys(b.tokens.rounded)) if (typeof b.tokens.rounded[k] === 'string' && !cssText.includes(`--radius-${k}:`)) out.push(`${n}: tokens.css ขาด radius ${k}`);
+  for (const k of Object.keys(b.tokens.spacing)) if (typeof b.tokens.spacing[k] === 'string' && !cssText.includes(`--space-${k}:`)) out.push(`${n}: tokens.css ขาด spacing ${k}`);
+  for (const [k, t] of Object.entries(b.tokens.typography)) {
+    if (!t || typeof t !== 'object') continue;
+    if (t.lineHeight !== undefined && !cssText.includes(`--text-${k}-lh:`)) out.push(`${n}: tokens.css ขาด line-height ของ ${k}`);
+    if (t.fontFamily && !head.includes(famName(t.fontFamily))) out.push(`${n}: หัว tokens.css ไม่บอกฟอนต์ ${famName(t.fontFamily)}`);
+  }
+  if ((cssText.match(/{/g) || []).length !== (cssText.match(/}/g) || []).length) out.push(`${n}: tokens.css วงเล็บ {} ไม่ครบ`);
+  if (b0.format !== 'tokens' && !b.fromProse.length) out.push(`${n}: ไม่มี YAML และดึง typography/radius/spacing จากข้อความไม่ได้ (tokens.css มีแต่สี)`);
+  return out;
 }
