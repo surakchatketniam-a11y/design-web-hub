@@ -8,7 +8,7 @@ import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
 import { renderLanding, fontFor, categoryModel, fontPlan, fontsUrl, thaiStack, ALL_THAI_FONTS } from './lib/landing.mjs';
-import { tokenCss, designAddendum, downloadView, verifyDownload, quickStart } from './lib/downloads.mjs';
+import { tokenCss, designAddendum, downloadView, verifyDownload, quickStart, componentRules } from './lib/downloads.mjs';
 import { LAYOUTS, WIRE } from '../src/layouts.mjs';
 import { buildPrompt, TOOLS } from '../src/prompt.mjs';
 
@@ -155,6 +155,13 @@ function typoStyle(t, cap = 64) {
     Number.isFinite(ls) ? `letter-spacing:${(ls * scale).toFixed(2)}px` : ''].filter(Boolean).join(';');
 }
 
+/** Caption under a component preview: the class from tokens.css (copyable) and the exact rule it applies. */
+function compCaption(key, b) {
+  const r = componentRules(b)[key];
+  if (!r) return `<code>${esc(key)}</code>`;
+  return `<code>.${esc(r.cls)}</code> <button class="btn sm" type="button" data-copy="${esc(r.cls)}">คัดลอกชื่อคลาส</button><details class="rule"><summary>ดู CSS ใน tokens.css</summary><pre>${esc(r.css)}</pre></details>`;
+}
+
 function renderComponent(key, comp, b, theme) {
   const t = b.tokens;
   const get = (v) => resolveRef(v, t);
@@ -176,7 +183,7 @@ function renderComponent(key, comp, b, theme) {
   const backdrop = transparent && fgC ? readableOn(fgC) : theme.bg;
   const label = { btn: 'Button', input: 'Input…', pill: 'Tag', card: 'Card', nav: 'Navigation', box: 'Component' }[kind];
   const style = `background:${bg};color:${fg};border-radius:${rad};padding:${kind === 'card' ? '20px' : pad};border:${border};${typoStyle(ty, 20)}`;
-  return `<figure class="comp"><div class="comp-demo" style="background:${css(backdrop, theme.bg)}"><div class="cx cx-${kind}" style="${style}">${esc(label)}</div></div><figcaption><code>${esc(key)}</code></figcaption></figure>`;
+  return `<figure class="comp"><div class="comp-demo" style="background:${css(backdrop, theme.bg)}"><div class="cx cx-${kind}" style="${style}">${esc(label)}</div></div><figcaption>${compCaption(key, b)}</figcaption></figure>`;
 }
 
 const PROMPT_TYPES = [

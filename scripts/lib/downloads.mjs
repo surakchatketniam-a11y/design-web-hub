@@ -59,9 +59,9 @@ const thaiMinLh = (px) => (px >= 32 ? 1.3 : px > 24 ? 1.4 : px > 16 ? 1.5 : 1.7)
 const compClass = (name) => `ds-${String(name).replace(/[^\w-]+/g, '-')}`;
 
 /** One class per DESIGN.md component (.ds-button-primary ...) built only from the variables above, so DESIGN.md's component recipes are usable from CSS. */
-export function componentCss(b) {
+function componentBlocks(b) {
   const T = b.tokens, comps = T.components || {};
-  if (!Object.keys(comps).length) return '';
+  if (!Object.keys(comps).length) return [];
   const has = { colors: T.colors, rounded: T.rounded, spacing: T.spacing };
   const VAR = { colors: 'color', rounded: 'radius', spacing: 'space' };
   // "{colors.primary}" -> var(--color-primary); returns '' when a referenced token does not exist
@@ -95,8 +95,13 @@ export function componentCss(b) {
     else if (c.borderColor !== undefined) add('border-color', val(c.borderColor));
     if (c.shadow !== undefined) add('box-shadow', val(c.shadow));
     if (c['aspect-ratio'] !== undefined) add('aspect-ratio', val(c['aspect-ratio']));
-    if (d.length) blocks.push(`.${compClass(name)} {\n${d.join('\n')}\n}`);
+    if (d.length) blocks.push([name, `.${compClass(name)} {\n${d.join('\n')}\n}`]);
   }
+  return blocks;
+}
+
+export function componentCss(b) {
+  const blocks = componentBlocks(b).map((x) => x[1]);
   if (!blocks.length) return '';
   return ['/* Components: one class per DESIGN.md component, e.g. <button class="ds-button-primary">.',
     ' * Built only from the variables above; state variants (-active, -disabled...) are separate classes. */', ...blocks].join('\n');
@@ -221,4 +226,13 @@ export function quickStart(b0) {
   .button { background: var(--color-${pri}); }
 </style>`;
   return code;
+}
+
+/** { component name -> { cls, css } } for the brand page; cached because the page asks once per component. */
+const ruleCache = new Map();
+export function componentRules(b0) {
+  if (ruleCache.has(b0.slug)) return ruleCache.get(b0.slug);
+  const out = Object.fromEntries(componentBlocks(downloadView(b0)).map(([name, css]) => [name, { cls: compClass(name), css }]));
+  ruleCache.set(b0.slug, out);
+  return out;
 }

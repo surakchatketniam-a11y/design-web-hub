@@ -31,6 +31,8 @@ Vercel ใช้ `vercel.json` (Build: `node scripts/build.mjs`, Output: `public
 | `content/<brand>/DESIGN.md` | ข้อมูลต้นทาง 74 แบรนด์ (64 แบรนด์มี YAML tokens ครบ, 10 แบรนด์เป็นรูปแบบเก่า) |
 | `scripts/build.mjs` | ตัวสร้างเว็บทั้งหมด: หน้าแรก (ตัวช่วยเลือก 3 คำถาม, สูตรผสมแนะนำ, ส่วนก่อน–หลัง), หน้าแบรนด์, `/patterns/`, `/mix/`, `/compare/`, `/gallery/`, `/about/`, ไฟล์ดาวน์โหลด, `data/*.json` |
 | `scripts/lib/landing.mjs` | อ่านสี/ตัวอักษร/เงา/ความรู้สึกจาก DESIGN.md → ตัวแปร CSS ของหน้าตัวอย่าง; ฟอนต์ไทยคู่ละติน (`thaiFontFor`, `fontPlan`, `fontsUrl`); ข้อความตัวอย่างภาษาไทย (`COPY_TH` ฯลฯ); สี status ผ่าน `tuneStatus` |
+| `scripts/lib/downloads.mjs` | สร้างไฟล์ดาวน์โหลด: `tokenCss` (tokens.css), `designAddendum` (ส่วนที่ต่อท้าย DESIGN.md), `downloadView` (เติม token ที่ YAML ไม่มีจากร้อยแก้ว), `componentCss`/`componentRules` (คลาส `.ds-*`), `quickStart` (โค้ดตัวอย่างบนหน้าแบรนด์), `verifyDownload` (ตัวตรวจตอน build) |
+| `scripts/lib/legacy.mjs` | ดึง typography/radius/spacing/สีจาก **ข้อความ** ของ DESIGN.md ที่ไม่มี YAML (10 แบรนด์) ใช้เฉพาะไฟล์ดาวน์โหลด ไม่กระทบหน้าตัวอย่าง |
 | `scripts/lib/theme.mjs` | สี/คอนทราสต์ + `tuneStatus` (ตรวจ hue และคอนทราสต์ ≥4.5:1 ของสี error/success/warning) |
 | `src/layouts.mjs` | เลย์เอาต์ 14 แบบ ใช้ได้ทั้ง build และเบราว์เซอร์ มีตัวแปลไทย/อังกฤษ (`toThai`, dictionary `TH`) ถ้าเพิ่มข้อความอังกฤษใหม่ต้องเพิ่มคำแปล |
 | `src/prompt.mjs` | ตัวสร้างคำสั่งให้ AI (ข้อห้ามกันหน้าตา AI, เลือกเครื่องมือ, ช่อง "เนื้อหาของฉัน") ใช้ร่วมกันทั้ง build และเบราว์เซอร์ (copy เป็น `assets/prompt.js`) |
@@ -79,7 +81,23 @@ Vercel ใช้ `vercel.json` (Build: `node scripts/build.mjs`, Output: `public
 6. **ไม่โฮสต์หน้าที่เลียนแบบหน่วยงานรัฐหรืออ้างองค์กรจริง** ชุดแกลเลอรีที่เกี่ยวข้องใช้ภาพถ่ายหน้าจอที่เห็นแถบ disclaimer และไม่มีปุ่มเปิดหน้า HTML จริง
 7. ผลงานที่ AI ตัวอื่นสร้าง ถ้าผู้ช่วยแก้เอง ต้องเปิดเผยบนหน้าแกลเลอรีว่าใครแก้อะไร
 
+## ไฟล์ดาวน์โหลด: DESIGN.md กับ tokens.css (กฎที่ต้องรักษาไว้)
+
+ปัญหาเดิมที่เจ้าของโปรเจกต์เจอคือสองไฟล์ขัดกันจนงง ตอนนี้ใช้กฎนี้ (อย่าทำให้กลับไปเป็นเหมือนเดิม):
+
+- **tokens.css ชนะเมื่อสองไฟล์ต่างกัน** บอกไว้ทั้งในหัว tokens.css, ส่วน "Using this file with tokens.css" ที่ต่อท้าย DESIGN.md, หน้าแบรนด์ และหน้าวิธีใช้
+- **ฟอนต์ถูกแทนที่** (เช่น SF Pro → Inter) ทุกฟอนต์ที่ DESIGN.md ใช้ต้องถูกบันทึกในหัว tokens.css (`fontNote`) และมีตัวแปร `--font-display/body/mono/serif/alt`
+- ทุก token ตัวอักษรมี `--text-<ชื่อ>-font|size|weight|lh|tracking` (และ `-transform` ถ้ามี) ตัวที่เป็นเนื้อหา/ปุ่ม/ลิงก์ชี้ `--font-body`
+- **ภาษาไทย:** `:root:lang(th)` ท้ายไฟล์ตั้ง tracking = 0, transform = none และยก line-height ตามขนาด (≤16px 1.7, ≤24px 1.5, ≤32px 1.4, เกินนั้น 1.3)
+- **คอมโพเนนต์:** ทุกคอมโพเนนต์ใน YAML ได้คลาส `.ds-<ชื่อ>` ท้าย tokens.css สร้างจากตัวแปรในไฟล์เท่านั้น (ไม่ใส่ค่าตรงๆ) ตารางที่ใช้ `headerBackground`/`rowBorder` ยังไม่รองรับ
+- **แบรนด์ที่ไม่มี YAML (10 ตัว):** `legacy.mjs` อ่านตาราง Hierarchy, Border Radius Scale, Spacing System จากข้อความ (best effort) ไม่มีคลาสคอมโพเนนต์ และชื่อตัวแปรเป็นตามค่า (`--radius-4`)
+- **ตัวตรวจ:** `verifyDownload` รันทุกแบรนด์ตอน build ถ้ามี ⚠ แสดงว่าสองไฟล์อาจไม่ตรงกัน ต้องแก้ที่ generator ไม่ใช่แก้ไฟล์ผลลัพธ์ (`public/` ถูกสร้างใหม่ทุกครั้ง)
+- หน้าแบรนด์มีกล่อง "เริ่มใช้งาน" (`quickStart`), ปุ่ม "คัดลอกทั้ง 2 ไฟล์" (`data-fetchcopy` รับหลาย URL คั่นด้วยช่องว่าง) และแท็บคอมโพเนนต์แสดงชื่อคลาส + CSS จริงจาก tokens.css
+
 ## ข้อควรระวังทางเทคนิค (เคยพลาดมาแล้ว)
+
+- **อย่ารัน `node scripts/build.mjs` โดยให้ shell อยู่ในโฟลเดอร์ `public/`** Windows ล็อกโฟลเดอร์แล้ว build จะล้มด้วย EPERM ตอนลบ `public/` (ให้ cd ออกมาที่รากโปรเจกต์ก่อน)
+- **ตรวจ `git status` และ `git diff --stat` ก่อน commit ทุกครั้ง** เคยมีไฟล์ที่แก้แล้วไม่ถูกบันทึกจริง และเคยมีสคริปต์ทำให้ line ending ทั้งไฟล์เปลี่ยน (diff หลักพันบรรทัด) ถ้าเขียนสคริปต์แก้ไฟล์ด้วย `String.replace` ให้ส่งฟังก์ชันเป็นตัวแทนที่ เพราะ `$` ในข้อความจะถูกตีความเป็นรูปแบบพิเศษ
 
 - **line ending:** ไฟล์ส่วนใหญ่เป็น CRLF (`style.css` เป็น LF; `preview.css`, `theme.mjs` ปนกัน) การแก้ไฟล์ด้วย Python บน Windows แบบ text mode จะเขียน CRLF ทั้งไฟล์ และ `sed -i` ก็เคยแปลงทั้งไฟล์ → diff บวมทั้งไฟล์ ให้เปิดด้วย `open(path, encoding='utf8', newline='')` และต่อท้ายด้วย EOL เดียวกับไฟล์ ตรวจด้วย `git diff --stat --ignore-space-at-eol`
 - **เครื่องมือ shell:** heredoc ที่มี `'''` ทำให้คำสั่งพัง และ `\n`/`\\` ในโค้ด JS เพี้ยน → เขียนไฟล์สคริปต์ด้วยเครื่องมือ Write/Edit แล้วค่อยรัน Python ใน `/tmp` เปิดจาก Python บน Windows ไม่เจอ (ใช้พาธสัมพัทธ์ในโปรเจกต์ แล้วลบทิ้ง)
@@ -99,6 +117,8 @@ Vercel ใช้ `vercel.json` (Build: `node scripts/build.mjs`, Output: `public
 4. แปลง PNG→WebP ด้วย Pillow (`quality=82, method=6`) เก็บเฉพาะ `.webp` ใน git
 
 ## งานค้าง / ไอเดียต่อ (เรียงตามที่แนะนำ)
+
+0. **ไฟล์ดาวน์โหลด:** ที่ยังเหลือคือ คลาสคอมโพเนนต์ของ 10 แบรนด์ที่ไม่มี YAML, ตารางที่ใช้ `headerBackground`/`rowBorder`, ชื่อตัวแปรของแบรนด์ไม่มี YAML ให้เป็นชื่อบทบาท, สีที่อยู่เฉพาะในข้อความของ ferrari/together.ai (รูปแบบข้อความไม่ตรงกับตัวดึงสี)
 
 1. **ปิดงานชุดหน่วยงาน** (ดูหัวข้อ "งานที่กำลังค้างอยู่") แล้วเปิดดูเว็บจริงบน Vercel หลัง deploy
 2. **แกลเลอรีก่อน–หลังชุดอื่น/เครื่องมืออื่น:** ตอนนี้ใช้ Claude (ช่างไฟ), Codex (ร้านกาแฟ), Gemini (หน่วยงาน); ยังไม่มี ChatGPT/Cursor/Lovable/v0; ชุดร้านกาแฟยังแก้ได้ถ้าจะให้ "ก่อน" สั่งแบบชี้นำน้อยกว่า
