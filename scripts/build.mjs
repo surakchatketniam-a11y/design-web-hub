@@ -8,6 +8,7 @@ import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
 import { renderLanding, fontFor, categoryModel, fontPlan, fontsUrl, thaiStack, ALL_THAI_FONTS } from './lib/landing.mjs';
+import { tokenCss, designAddendum } from './lib/downloads.mjs';
 import { LAYOUTS, WIRE } from '../src/layouts.mjs';
 import { buildPrompt, TOOLS } from '../src/prompt.mjs';
 
@@ -141,41 +142,6 @@ const swatches = (colors, n = 6) => {
   const uniq = [...new Set(vals)];
   return uniq.slice(0, n).map((c) => `<i style="background:${css(c, '#ccc')}"></i>`).join('');
 };
-
-function tokenCss(b) {
-  const lines = [`/* ${b.name} — design tokens (generated from DESIGN.md · for learning) */`, ':root {'];
-  for (const [k, v] of Object.entries(b.tokens.colors)) lines.push(`  --color-${k}: ${css(v, 'transparent')};`);
-  for (const [k, v] of Object.entries(b.tokens.rounded)) if (typeof v === 'string') lines.push(`  --radius-${k}: ${css(v, '0')};`);
-  for (const [k, v] of Object.entries(b.tokens.spacing)) if (typeof v === 'string') lines.push(`  --space-${k}: ${css(v, '0')};`);
-  for (const [k, t] of Object.entries(b.tokens.typography)) {
-    if (typeof t !== 'object') continue;
-    if (t.fontSize) lines.push(`  --text-${k}-size: ${css(String(t.fontSize), 'inherit')};`);
-    if (t.fontWeight) lines.push(`  --text-${k}-weight: ${css(String(t.fontWeight), 'inherit')};`);
-    if (t.letterSpacing !== undefined) lines.push(`  --text-${k}-tracking: ${css(String(t.letterSpacing), 'normal')};`);
-  }
-  lines.push(`  --font-display: ${b.fonts.display};`, `  --font-body: ${b.fonts.body};`, `  --font-thai-display: ${thaiStack(b.fonts.thaiDisplay)};`, `  --font-thai-body: ${thaiStack(b.fonts.thaiBody)};`);
-  lines.push('}');
-  return lines.join('\n') + '\n';
-}
-
-/** Thai typography section appended to the downloadable DESIGN.md (upstream files are English-only and their fonts have no Thai glyphs). */
-function thaiSection(b) {
-  const f = b.fonts, same = f.thaiDisplay === f.thaiBody;
-  return `
-
-## Thai Typography (added by DESIGN.md Hub)
-
-The fonts above have no Thai glyphs. When the page content is Thai, pair them with a free Thai font so the browser does not fall back to a system font:
-
-- Thai display / headings: **${f.thaiDisplay}**${same ? ' (also used for body text)' : `
-- Thai body text: **${f.thaiBody}**`}
-- CSS stacks: \`--font-thai-display: ${thaiStack(f.thaiDisplay)}\`${same ? '' : `, \`--font-thai-body: ${thaiStack(f.thaiBody)}\``} (see tokens.css). Put the Thai font right after the Latin font in every \`font-family\`, e.g. \`font-family: ${f.display}\`.
-- Load them from Google Fonts: \`${fontsUrl([f.thaiDisplay, f.thaiBody])}\`
-- Set \`<html lang="th">\`. Body line-height 1.7 or more (Thai tone marks need room); headings 1.3 or more, even if the Latin value above is tighter.
-- Never apply letter-spacing (positive or negative) to Thai text; ignore the tracking values above for Thai. Do not use \`text-transform: uppercase\` or italics on Thai.
-- Keep body text at 16px or larger. Thai has no spaces between words, so let the browser wrap lines (\`overflow-wrap: break-word\`) and avoid fixed-width truncation.
-`;
-}
 
 /* ---------- brand page sections ---------- */
 function typoStyle(t, cap = 64) {
@@ -380,7 +346,7 @@ function main() {
     mixBrands.push({ slug: b.slug, name: b.name, vars: Object.fromEntries((lctx.vars || '').split(';').filter(Boolean).map((p) => { const i = p.indexOf(':'); return [p.slice(2, i), p.slice(i + 1)]; })), classes: (lctx.classes || '').split(' ').filter(Boolean), hasBand: !!lctx.hasBand, tileCount: lctx.tileCount || 0, dark: !!lctx.dark, fonts: lctx.fonts || {} });
     writeFileSync(join(dir, 'index.html'), renderBrandPage(b, brands));
     const dd = join(OUT, 'd', b.slug); mkdirSync(dd, { recursive: true });
-    writeFileSync(join(dd, 'DESIGN.md'), b.raw.replace(/\s*$/, '') + thaiSection(b));
+    writeFileSync(join(dd, 'DESIGN.md'), b.raw.replace(/\s*$/, '') + designAddendum(b));
     writeFileSync(join(dd, 'tokens.css'), tokenCss(b));
     writeFileSync(join(dd, 'tokens.json'), JSON.stringify({ name: b.name, source: SITE.upstream, ...b.tokens, fonts: { display: b.fonts.display, body: b.fonts.body, thaiDisplay: b.fonts.thaiDisplay, thaiBody: b.fonts.thaiBody, note: 'Latin fonts have no Thai glyphs: use the Thai fonts for Thai content, body line-height >= 1.7, no letter-spacing.' } }, null, 2));
   }
@@ -522,7 +488,7 @@ function main() {
   mkdirSync(join(OUT, 'about'), { recursive: true });
   writeFileSync(join(OUT, 'about', 'index.html'), PAGE(`วิธีใช้ — ${SITE.title}`, `<section class="wrap content narrow"><h1>วิธีใช้</h1>
     <h2>DESIGN.md คืออะไร</h2><p>ไฟล์ markdown ธรรมดาที่บรรยายระบบดีไซน์ของเว็บ (สี ตัวอักษร ระยะห่าง คอมโพเนนต์ กฎการใช้งาน) เพื่อให้ AI ที่ช่วยเขียนโค้ดอ่านแล้วสร้าง UI ที่หน้าตาสอดคล้องกัน</p>
-    <h2>ใช้งาน 3 ขั้น</h2><ol><li>เลือกแบรนด์จากหน้าแรกและดูตัวอย่าง</li><li>กด “ดาวน์โหลด DESIGN.md” แล้ววางไว้ที่รากโปรเจกต์ของคุณ</li><li>สั่ง AI เช่น “อ่าน DESIGN.md แล้วสร้างหน้า landing page ตามสไตล์นี้”</li></ol>
+    <h2>ใช้งาน 3 ขั้น</h2><ol><li>เลือกแบรนด์จากหน้าแรกและดูตัวอย่าง</li><li>กดดาวน์โหลด <code>DESIGN.md</code> <b>และ</b> <code>tokens.css</code> วางไว้ที่รากโปรเจกต์ (DESIGN.md อธิบายเหตุผลและกฎ ส่วน tokens.css คือค่าที่ใช้ในโค้ด ถ้าสองไฟล์ต่างกัน ให้ยึด tokens.css) แล้วใส่ <code>&lt;link rel="stylesheet" href="tokens.css"&gt;</code> กับลิงก์ฟอนต์ท้ายไฟล์ DESIGN.md</li><li>สั่ง AI เช่น “อ่าน DESIGN.md แล้วสร้างหน้า landing page ตามสไตล์นี้”</li></ol>
     <h2>ไม่รู้จะเลือกสไตล์ไหน</h2><p>ใช้ตัวกรองหน้าแรก: เลือก <strong>ความรู้สึก</strong> ที่อยากได้ (เช่น มินิมอล อบอุ่น หรูหรา) แล้วเลือก <strong>เหมาะกับ</strong> ประเภทเว็บของคุณ จากนั้นเปิดดู 2–3 แบบเทียบกัน ป้าย “โทน” และ “มุม” คำนวณจากไฟล์ DESIGN.md โดยตรง ส่วนสรุปภาษาไทยและป้ายความรู้สึก/การใช้งานเขียนจากคำอธิบายในไฟล์ อาจไม่ตรงกับความเห็นของทุกคน</p>
     <h2>ให้ AI สร้างเว็บให้ แต่ไม่ให้ออกมาหน้าตาเดิมๆ</h2><p>AI มักออกแบบแบบกลางๆ ถ้าไม่ได้รับข้อกำหนดที่ชัดเจน การวางไฟล์ <code>DESIGN.md</code> กับ <code>tokens.css</code> ไว้ในโปรเจกต์ แล้วสั่งตามแท็บ “คำสั่งให้ AI” ในหน้าแบรนด์ จะบังคับให้ AI ใช้สี ฟอนต์ และมุมโค้งที่คุณเลือก และควรเปลี่ยนชื่อ โลโก้ ภาพ และข้อความเป็นของคุณเสมอ</p>
     <h2>ข้อควรรู้</h2><ul><li>ไฟล์เหล่านี้เป็นการ “วิเคราะห์เชิงแรงบันดาลใจ” จากเว็บไซต์จริง ใช้เพื่อการเรียนรู้ ไม่ใช่ไฟล์ทางการของแบรนด์</li><li>หน้าตัวอย่างบนเว็บนี้เป็นหน้าทั่วไปที่นำสี ตัวอักษร และมุมโค้งของแบรนด์มาใส่ <strong>ไม่ใช่การจำลองเว็บจริงของแบรนด์นั้น</strong></li><li>ไม่ควรใช้โลโก้ ชื่อ หรือทำให้ผลงานของคุณดูเหมือนเป็นเว็บของแบรนด์นั้น</li><li>ฟอนต์บางตัวเป็นของเสียเงิน หน้าตัวอย่างจึงใช้ Inter แทน</li><li>ฟอนต์ละตินของแบรนด์ไม่มีตัวอักษรไทย ไฟล์ที่ดาวน์โหลดจึงมีส่วน “Thai Typography” ที่ระบุฟอนต์ไทยฟรีคู่กัน (เช่น Anuphan, Noto Serif Thai, IBM Plex Sans Thai) พร้อมกฎ line-height และการไม่ใช้ letter-spacing กับภาษาไทย หน้าตัวอย่างสลับดูเป็นภาษาไทยหรือ English ได้</li></ul>

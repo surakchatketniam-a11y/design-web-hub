@@ -376,3 +376,13 @@ activate(app);
 </script>
 </body></html>`;
 }
+
+/** Google Fonts URL with only the fonts a brand's stacks actually use (plus its Thai companions), instead of the full catalogue. */
+export function fontsUrlFor(latinStacks, thaiFonts = []) {
+  const W = { 'Inter': '300;400;500;600;700', 'DM Sans': '400;500;700', 'IBM Plex Sans': '400;500;600', 'Source Serif 4': '400;500;600', 'JetBrains Mono': '400;500' };
+  const text = latinStacks.join(' ').replace(/IBM Plex Sans Thai Looped|IBM Plex Sans Thai|Noto Sans Thai|Noto Serif Thai/g, '');
+  const latin = Object.keys(W).filter((n) => text.includes(n));
+  const fams = [...latin.map((n) => `${n.replace(/ /g, '+')}:wght@${W[n]}`),
+    ...[...new Set([...thaiFonts, 'Noto Sans Thai'])].filter((f) => GF_WEIGHTS[f]).map((f) => `${f.replace(/ /g, '+')}:wght@${GF_WEIGHTS[f]}`)];
+  return `https://fonts.googleapis.com/css2?${fams.map((f) => `family=${f}`).join('&')}&display=swap`;
+}
