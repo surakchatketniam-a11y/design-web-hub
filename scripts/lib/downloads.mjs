@@ -53,10 +53,65 @@ export function downloadView(b) {
   return { ...b, tokens: { ...b.tokens, typography, rounded, spacing }, fonts: has(b.tokens.typography) ? b.fonts : fontPlan({ typography }), proseColors, fromProse };
 }
 
+/** Minimum Thai line-height by font size: small text needs the most room, big headings the least. */
+const thaiMinLh = (px) => (px >= 32 ? 1.3 : px > 24 ? 1.4 : px > 16 ? 1.5 : 1.7);
+
+const compClass = (name) => `ds-${String(name).replace(/[^\w-]+/g, '-')}`;
+
+/** One class per DESIGN.md component (.ds-button-primary ...) built only from the variables above, so DESIGN.md's component recipes are usable from CSS. */
+export function componentCss(b) {
+  const T = b.tokens, comps = T.components || {};
+  if (!Object.keys(comps).length) return '';
+  const has = { colors: T.colors, rounded: T.rounded, spacing: T.spacing };
+  const VAR = { colors: 'color', rounded: 'radius', spacing: 'space' };
+  // "{colors.primary}" -> var(--color-primary); returns '' when a referenced token does not exist
+  const val = (raw) => {
+    let ok = true;
+    const out = String(raw).replace(/\{(colors|rounded|spacing)\.([^}]+)\}/g, (_, g, k) => { if (!(k in has[g])) ok = false; return `var(--${VAR[g]}-${k})`; });
+    return ok && SAFE_CSS.test(out) ? out : '';
+  };
+  const blocks = [];
+  for (const [name, c] of Object.entries(comps)) {
+    if (!c || typeof c !== 'object') continue;
+    const d = [], add = (p, v) => { if (v) d.push(`  ${p}: ${v};`); };
+    if (c.backgroundColor !== undefined) add('background', val(c.backgroundColor));
+    if (c.textColor !== undefined) add('color', val(c.textColor));
+    const tk = typeof c.typography === 'string' ? (c.typography.match(/^\{typography\.([^}]+)\}$/) || [])[1] : '';
+    const t = tk && T.typography[tk];
+    if (t && typeof t === 'object') {
+      if (t.fontFamily) add('font-family', `var(--text-${tk}-font, inherit)`);
+      if (t.fontSize) add('font-size', `var(--text-${tk}-size)`);
+      if (t.fontWeight) add('font-weight', `var(--text-${tk}-weight)`);
+      if (t.lineHeight !== undefined) add('line-height', `var(--text-${tk}-lh)`);
+      if (t.letterSpacing !== undefined) add('letter-spacing', `var(--text-${tk}-tracking)`);
+      if (t.textTransform) add('text-transform', `var(--text-${tk}-transform)`);
+    }
+    if (c.rounded !== undefined) add('border-radius', val(c.rounded));
+    if (c.padding !== undefined) add('padding', val(c.padding));
+    if (c.height !== undefined) add('height', val(c.height));
+    if (c.width !== undefined) add('width', val(c.width));
+    if (c.size !== undefined) { add('width', val(c.size)); add('height', val(c.size)); }
+    if (c.border !== undefined) add('border', val(c.border));
+    else if (c.borderColor !== undefined) add('border-color', val(c.borderColor));
+    if (c.shadow !== undefined) add('box-shadow', val(c.shadow));
+    if (c['aspect-ratio'] !== undefined) add('aspect-ratio', val(c['aspect-ratio']));
+    if (d.length) blocks.push(`.${compClass(name)} {\n${d.join('\n')}\n}`);
+  }
+  if (!blocks.length) return '';
+  return ['/* Components: one class per DESIGN.md component, e.g. <button class="ds-button-primary">.',
+    ' * Built only from the variables above; state variants (-active, -disabled...) are separate classes. */', ...blocks].join('\n');
+}
+
 export function tokenCss(b0) {
   const b = downloadView(b0);
   const roles = fontRoles(b);
-  const roleOf = (t) => roles.find((r) => !r.derived && r.orig === famName(t.fontFamily));
+  const bodyRole = roles.find((r) => r.derived);
+  // display and body often share one family: text styles that are not headings should point at --font-body
+  const BODYISH = /^(body|caption|link|button|btn|label|nav|input|field|badge|tag|chip|meta|micro|fine|legal|small|ui|utility|eyebrow|footnote)/;
+  const roleOf = (t, k) => {
+    const r = roles.find((x) => !x.derived && x.orig === famName(t.fontFamily));
+    return r && r.var === 'display' && bodyRole && BODYISH.test(k) ? bodyRole : r;
+  };
   const legacy = b.format !== 'tokens';
   const head = [`/* ${b.name} - design tokens (generated from DESIGN.md by DESIGN.md Hub, for learning)`,
     ' * Use THIS file for code; DESIGN.md explains when and why to use each token.',
@@ -64,6 +119,7 @@ export function tokenCss(b0) {
   if (legacy) head.push(" * NOTE: this brand's DESIGN.md has no YAML token block. Colors, " + (b.fromProse.length ? b.fromProse.join(', ') : 'nothing else') + ' were read from its text (best effort):', ' * check DESIGN.md before relying on a value, and read the prose for anything missing here (e.g. component styles).');
   head.push(' * Fonts:', ...roles.map((r) => ` *   --font-${r.var}: ${fontNote(r)}`));
   if (Object.keys(b.tokens.typography).length) head.push(' * Thai: the :root:lang(th) block at the bottom zeroes letter-spacing and raises line-height. Set <html lang="th"> to enable it.');
+  if (Object.keys(b.tokens.components || {}).length) head.push(' * Components: classes named .ds-<component> at the end of this file apply the recipes from DESIGN.md (padding, radius, colors, type).');
   head.push(' */');
   const lines = [...head, ':root {'];
   for (const [k, v] of Object.entries(b.tokens.colors)) lines.push(`  --color-${k}: ${css(v, 'transparent')};`);
@@ -75,22 +131,26 @@ export function tokenCss(b0) {
   const thai = [];
   for (const [k, t] of Object.entries(b.tokens.typography)) {
     if (!t || typeof t !== 'object') continue;
-    const r = roleOf(t);
+    const r = roleOf(t, k);
     if (r) lines.push(`  --text-${k}-font: var(--font-${r.var});`);
+    if (t.textTransform) lines.push(`  --text-${k}-transform: ${css(String(t.textTransform), 'none')};`);
     if (t.fontSize) lines.push(`  --text-${k}-size: ${css(String(t.fontSize), 'inherit')};`);
     if (t.fontWeight) lines.push(`  --text-${k}-weight: ${css(String(t.fontWeight), 'inherit')};`);
     if (t.lineHeight !== undefined) lines.push(`  --text-${k}-lh: ${css(String(t.lineHeight), 'normal')};`);
     if (t.letterSpacing !== undefined) lines.push(`  --text-${k}-tracking: ${css(String(t.letterSpacing), 'normal')};`);
-    const ratio = lhRatio(t), ls = parseFloat(t.letterSpacing), minLh = parseFloat(t.fontSize) > 24 ? 1.3 : 1.7;
+    const ratio = lhRatio(t), ls = parseFloat(t.letterSpacing), minLh = thaiMinLh(parseFloat(t.fontSize));
     const fixLh = Number.isFinite(ratio) && ratio < minLh, fixLs = Number.isFinite(ls) && ls !== 0;
-    if (fixLh || fixLs) thai.push([k, fixLh ? minLh : null, fixLs]);
+    const fixTt = !!t.textTransform && !/^none$/i.test(String(t.textTransform));
+    if (fixLh || fixLs || fixTt) thai.push([k, fixLh ? minLh : null, fixLs, fixTt]);
   }
   lines.push('}');
   if (thai.length) {
-    lines.push('', '/* Thai content: no letter-spacing, taller line-height (Thai tone marks need room) */', ':root:lang(th) {');
-    for (const [k, lh, ls] of thai) { if (lh) lines.push(`  --text-${k}-lh: ${lh};`); if (ls) lines.push(`  --text-${k}-tracking: 0;`); }
+    lines.push('', '/* Thai content: no letter-spacing or uppercase, taller line-height (Thai tone marks need room) */', ':root:lang(th) {');
+    for (const [k, lh, ls, tt] of thai) { if (lh) lines.push(`  --text-${k}-lh: ${lh};`); if (ls) lines.push(`  --text-${k}-tracking: 0;`); if (tt) lines.push(`  --text-${k}-transform: none;`); }
     lines.push('}');
   }
+  const comps = componentCss(b);
+  if (comps) lines.push('', comps);
   return lines.join('\n') + '\n';
 }
 
@@ -100,7 +160,7 @@ export function designAddendum(b0) {
   const f = b.fonts, same = f.thaiDisplay === f.thaiBody, roles = fontRoles(b);
   const url = fontsUrlFor(roles.map((r) => r.stack), [f.thaiDisplay, f.thaiBody]);
   const tokenLine = b.format === 'tokens'
-    ? 'Every color, radius, spacing and type token above exists in tokens.css under the same name (`--color-*`, `--radius-*`, `--space-*`, `--text-<name>-size|weight|lh|tracking|font`).'
+    ? 'Every color, radius, spacing and type token above exists in tokens.css under the same name (`--color-*`, `--radius-*`, `--space-*`, `--text-<name>-size|weight|lh|tracking|font`). Components from the YAML are available as classes: `.ds-<component-name>`.'
     : `This file has no YAML token block, so tokens.css was built from the text above (colors${b.fromProse.length ? ', ' + b.fromProse.join(', ') : ''}); values are best-effort, and anything the text describes only in words (component styles, shadows) is not in tokens.css.`;
   return `
 
@@ -119,7 +179,7 @@ The fonts above have no Thai glyphs. When the page content is Thai, pair them wi
 - Thai display / headings: **${f.thaiDisplay}**${same ? ' (also used for body text)' : `
 - Thai body text: **${f.thaiBody}**`}
 - CSS stacks: \`--font-thai-display: ${thaiStack(f.thaiDisplay)}\`${same ? '' : `, \`--font-thai-body: ${thaiStack(f.thaiBody)}\``} (see tokens.css). Put the Thai font right after the Latin font in every \`font-family\`, e.g. \`font-family: ${f.display}\`.
-- Set \`<html lang="th">\`. tokens.css then switches automatically (\`:root:lang(th)\`): every \`--text-*-tracking\` becomes 0 and short \`--text-*-lh\` values are raised (body 1.7+, headings 1.3+). Use those variables instead of the Latin numbers written above.
+- Set \`<html lang="th">\`. tokens.css then switches automatically (\`:root:lang(th)\`): every \`--text-*-tracking\` becomes 0, \`--text-*-transform\` becomes none, and short \`--text-*-lh\` values are raised (1.7 for text up to 16px, 1.5 up to 24px, 1.4 up to 32px, 1.3 above). Use those variables instead of the Latin numbers written above.
 - Never apply letter-spacing (positive or negative) to Thai text. Do not use \`text-transform: uppercase\` or italics on Thai.
 - Keep body text at 16px or larger. Thai has no spaces between words, so let the browser wrap lines (\`overflow-wrap: break-word\`) and avoid fixed-width truncation.
 `;
@@ -136,6 +196,10 @@ export function verifyDownload(b0, cssText) {
     if (!t || typeof t !== 'object') continue;
     if (t.lineHeight !== undefined && !cssText.includes(`--text-${k}-lh:`)) out.push(`${n}: tokens.css ขาด line-height ของ ${k}`);
     if (t.fontFamily && !head.includes(famName(t.fontFamily))) out.push(`${n}: หัว tokens.css ไม่บอกฟอนต์ ${famName(t.fontFamily)}`);
+  }
+  for (const [k, c] of Object.entries(b.tokens.components || {})) {
+    const styled = c && typeof c === 'object' && ['backgroundColor', 'textColor', 'padding', 'rounded', 'border', 'height'].some((p) => c[p] !== undefined);
+    if (styled && !cssText.includes(`.${compClass(k)} {`)) out.push(`${n}: tokens.css ขาดคลาสคอมโพเนนต์ ${k}`);
   }
   if ((cssText.match(/{/g) || []).length !== (cssText.match(/}/g) || []).length) out.push(`${n}: tokens.css วงเล็บ {} ไม่ครบ`);
   if (b0.format !== 'tokens' && !b.fromProse.length) out.push(`${n}: ไม่มี YAML และดึง typography/radius/spacing จากข้อความไม่ได้ (tokens.css มีแต่สี)`);
