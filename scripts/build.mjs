@@ -8,7 +8,7 @@ import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
 import { renderLanding, fontFor, categoryModel, fontPlan, fontsUrl, thaiStack, ALL_THAI_FONTS } from './lib/landing.mjs';
-import { tokenCss, designAddendum, downloadView, verifyDownload } from './lib/downloads.mjs';
+import { tokenCss, designAddendum, downloadView, verifyDownload, quickStart } from './lib/downloads.mjs';
 import { LAYOUTS, WIRE } from '../src/layouts.mjs';
 import { buildPrompt, TOOLS } from '../src/prompt.mjs';
 
@@ -290,12 +290,14 @@ function renderBrandPage(b, siblings) {
     ${b.th ? `<details class="orig"><summary>ดูคำอธิบายต้นฉบับ (อังกฤษ)</summary><p>${esc(plain(b.description))}</p></details>` : ''}
     <div class="actions">
       <a class="btn primary" href="../../d/${esc(b.slug)}/DESIGN.md" download="DESIGN.md">⬇ ดาวน์โหลด DESIGN.md</a>
-      <button class="btn" data-fetchcopy="../../d/${esc(b.slug)}/DESIGN.md">คัดลอกเนื้อหา</button>
+      <button class="btn" data-fetchcopy="../../d/${esc(b.slug)}/DESIGN.md">คัดลอก DESIGN.md</button>
+      <button class="btn" data-fetchcopy="../../d/${esc(b.slug)}/DESIGN.md ../../d/${esc(b.slug)}/tokens.css">คัดลอกทั้ง 2 ไฟล์ (วางให้ AI)</button>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.css" download="${esc(b.slug)}-tokens.css">tokens.css</a>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.json" download="${esc(b.slug)}-tokens.json">tokens.json</a>
       <a class="btn" href="../../mix/?c=${esc(b.slug)}&t=${esc(b.slug)}&s=${esc(b.slug)}&f=${esc(b.slug)}">ใช้เป็นฐานผสมสไตล์ →</a>
     </div>
     <div class="prompt"><span class="muted">วางไฟล์ที่รากโปรเจกต์แล้วสั่ง AI:</span><code id="prompt">${esc(prompt)}</code><button class="btn sm" data-copy="${esc(prompt)}">คัดลอก</button></div>
+    <div class="quick"><h2>เริ่มใช้งานในโปรเจกต์ของคุณ</h2><p class="muted">DESIGN.md อธิบายเหตุผลและกฎ ส่วน <code>tokens.css</code> คือค่าที่ใช้ในโค้ด (ถ้าสองไฟล์ต่างกัน ให้ยึด tokens.css) วางสองไฟล์ไว้ข้างกัน แล้วใส่โค้ดนี้:</p><pre id="quick">${esc(quickStart(b))}</pre><div class="qrow"><button class="btn sm" data-copy="${esc(quickStart(b))}">คัดลอกโค้ดนี้</button></div></div>
     ${b.format === 'legacy' ? '<p class="note">ไฟล์นี้เป็นรูปแบบเอกสารเก่า (ไม่มี token แบบ YAML) หน้านี้จึงแสดงสีที่ดึงจากข้อความเท่าที่อ่านได้</p>' : ''}
   </div></section>
   <div class="wrap content">

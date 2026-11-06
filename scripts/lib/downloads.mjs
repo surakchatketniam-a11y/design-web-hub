@@ -141,3 +141,20 @@ export function verifyDownload(b0, cssText) {
   if (b0.format !== 'tokens' && !b.fromProse.length) out.push(`${n}: ไม่มี YAML และดึง typography/radius/spacing จากข้อความไม่ได้ (tokens.css มีแต่สี)`);
   return out;
 }
+
+/** Copy-paste quick start shown on the brand page: link tokens.css, load fonts, use the variables. */
+export function quickStart(b0) {
+  const b = downloadView(b0), f = b.fonts, roles = fontRoles(b);
+  const url = fontsUrlFor(roles.map((r) => r.stack), [f.thaiDisplay, f.thaiBody]);
+  const keys = Object.keys(b.tokens.colors);
+  const pick = (re, d) => keys.find((k) => re.test(k)) || d;
+  const bg = pick(/^(canvas|background|bg|surface|white)$/, keys[0]), ink = pick(/^(ink|text|body|foreground|black)$/, keys[1] || keys[0]), pri = pick(/^primary$/, keys[0]);
+  const code = `<html lang="th"> <!-- lang="th" turns on the Thai line-height / tracking rules -->
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="${url}">
+<style>
+  body   { font-family: var(--font-body); background: var(--color-${bg}); color: var(--color-${ink}); }
+  .button { background: var(--color-${pri}); }
+</style>`;
+  return code;
+}
