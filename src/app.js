@@ -181,11 +181,11 @@
   var pctl = document.getElementById('pctl');
   if (pctl) {
     var AP = null, pcards = Array.prototype.slice.call(document.querySelectorAll('.pcard'));
-    var pv = function (id) { return document.getElementById(id).value; };
+    var fv = function (id) { return document.getElementById(id).value; };
     var refresh = function () {
       if (!AP) return;
       pcards.forEach(function (c) {
-        var txt = AP.buildPrompt({ title: c.getAttribute('data-title'), extra: c.getAttribute('data-extra') }, { avoid: c.getAttribute('data-avoid'), tool: pv('pTool'), content: { name: pv('pName'), offer: pv('pOffer'), audience: pv('pAud') } });
+        var txt = AP.buildPrompt({ title: c.getAttribute('data-title'), extra: c.getAttribute('data-extra') }, { avoid: c.getAttribute('data-avoid'), tool: fv('pTool'), content: { name: fv('pName'), offer: fv('pOffer'), audience: fv('pAud') } });
         c.querySelector('pre').textContent = txt; c.querySelector('[data-copy]').setAttribute('data-copy', txt);
       });
     };
