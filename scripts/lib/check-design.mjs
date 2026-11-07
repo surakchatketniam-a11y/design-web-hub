@@ -59,6 +59,8 @@ const R = {
   role: /(?<![\w-])(?:[a-z0-9-]+:)*(?:bg|text|border|ring|fill|stroke|from|to|via|divide|outline|decoration|shadow|accent|caret|placeholder)-app-([a-z0-9-]+?)(?:\/\d+)?(?![\w-])/g,
   varApp: /var\(\s*--app-([a-z0-9-]+)/g,
   ds: /(?<![\w-])(ds-app-[a-z0-9-]+)(?![\w-])/g,
+  // colored emoji (and text symbols forced to emoji with U+FE0F); (c) (r) (tm) and plain arrows are not matched
+  emoji: /\p{Emoji_Presentation}|\p{Extended_Pictographic}️/gu,
   accentFill: /(?<![\w-])bg-app-accent(?![\w-])/,
   smallText: /(?<![\w-])(?:[a-z0-9-]+:)*text-(?:xs|sm)(?![\w-])/,
   // class names assembled from strings: bg-${x}-500, `text-${tone}`, 'bg-' + color  (Tailwind cannot see them, so no CSS is generated)
@@ -68,8 +70,11 @@ const R = {
   tracking: /(?<![\w-])(?:[a-z0-9-]+:)*tracking-[a-z]+/g,
   upper: /(?<![\w-])(?:[a-z0-9-]+:)*uppercase(?![\w-])/g
 };
-const found = { undefinedDs: [], smallOnAccent: [], dynamic: [], hex: [], fn: [], pal: [], bw: [], arb: [], tiny: [], undefinedRole: [], undefinedVar: [], accentPlain: 0, brand: [], tracking: 0, upper: 0 };
+const found = { emoji: [], undefinedDs: [], smallOnAccent: [], dynamic: [], hex: [], fn: [], pal: [], bw: [], arb: [], tiny: [], undefinedRole: [], undefinedVar: [], accentPlain: 0, brand: [], tracking: 0, upper: 0 };
 const roleUse = new Map(); let roleTotal = 0;
+// per file: how many role uses there are and how many of them are status colors (danger/success/warning/info), with sample lines
+const STATUS_ROLE = /^(danger|success|warning|info)/;
+const fileRoles = new Map();
 const loc = (f, text, idx) => `${relative(root, f)}:${text.slice(0, idx).split('\n').length}`;
 const isComment = (text, idx) => { const ls = text.lastIndexOf('\n', idx) + 1; return /^\s*(\/\/|\*|\/\*|<!--)/.test(text.slice(ls, text.indexOf('\n', idx) < 0 ? undefined : text.indexOf('\n', idx))); };
 files.forEach((f, i) => {
@@ -77,8 +82,10 @@ files.forEach((f, i) => {
   const push = (arr, re, fn) => { for (const m of t.matchAll(re)) { if (isComment(t, m.index)) continue; arr.push(fn ? fn(m) : { where: loc(f, t, m.index), what: m[0] }); } };
   push(found.hex, R.hex); push(found.fn, R.fn); push(found.pal, R.pal); push(found.bw, R.bw); push(found.arb, R.arb);
   for (const m of t.matchAll(R.tiny)) if (parseFloat(m[2]) < 12) found.tiny.push({ where: loc(f, t, m.index), what: m[1] });
-  for (const m of t.matchAll(R.role)) { roleTotal++; roleUse.set(m[1], (roleUse.get(m[1]) || 0) + 1); if (definedRoles.size && !definedRoles.has(m[1])) found.undefinedRole.push({ where: loc(f, t, m.index), what: m[0] }); }
-  if (!/\.css$/.test(f)) push(found.dynamic, R.dyn);
+  for (const m of t.matchAll(R.role)) { roleTotal++; roleUse.set(m[1], (roleUse.get(m[1]) || 0) + 1);
+    const fr = fileRoles.get(f) || { total: 0, status: 0, samples: [] }; fileRoles.set(f, fr); fr.total++;
+    if (STATUS_ROLE.test(m[1])) { fr.status++; if (fr.samples.length < 3) fr.samples.push({ where: loc(f, t, m.index), what: m[0] }); } if (definedRoles.size && !definedRoles.has(m[1])) found.undefinedRole.push({ where: loc(f, t, m.index), what: m[0] }); }
+  if (!/\.css$/.test(f)) { push(found.dynamic, R.dyn); push(found.emoji, R.emoji); }
   if (!/\.css$/.test(f) && definedDs.size) for (const m of t.matchAll(R.ds)) if (!definedDs.has(m[1])) found.undefinedDs.push({ where: loc(f, t, m.index), what: m[1] });
   // heuristic (same line only): an accent fill and small text together, when white-on-accent is below 4.5:1 for this brand
   if (!/\.css$/.test(f) && onAccentCr < 4.5) t.split('\n').forEach((line, n) => { if (R.accentFill.test(line) && R.smallText.test(line) && !/^\s*(\/\/|\*)/.test(line)) found.smallOnAccent.push({ where: `${relative(root, f)}:${n + 1}`, what: line.trim().slice(0, 90) }); });
@@ -118,6 +125,7 @@ check('error', found.dynamic, 'Tailwind class names built from strings (bg-${x}-
 if (definedDs.size) check('error', found.undefinedDs, '.ds-app-* classes that the kit does not define (they silently do nothing)'); else console.log('  · .ds-app-* classes not checked (the theme file does not define them: use the latest kit files)');
 console.log('\nText');
 check('warn', found.smallOnAccent, `small text (text-xs/text-sm) on bg-app-accent: on-accent text is only ${onAccentCr.toFixed(1)}:1 on this brand`, definedRoles.has('accent-strong') ? 'use bg-app-accent-strong for surfaces with small text; same-line check only' : 'use text-base or larger');
+check('warn', found.emoji, 'emoji in the source', 'icons must come from one SVG icon set, not emoji (emoji inside real user content is fine)');
 check('warn', langIssues, 'Thai text found but <html lang="th"> is missing', 'the kit\'s Thai line-height and tracking rules only apply under lang="th"');
 check('error', found.tiny, 'text smaller than 12px (text-[10px] ...)', 'smallest allowed is text-xs; Thai body text is text-sm or larger');
 if (found.accentPlain) { warns++; console.log(`  ⚠ text-app-accent used ${found.accentPlain} time(s): for text use text-app-accent-text (readable); keep text-app-accent for large icons and decoration`); } else console.log('  ✓ no plain text-app-accent');
@@ -130,5 +138,14 @@ const chart = used.filter(([k]) => /^chart-/.test(k)).reduce((s, [, n]) => s + n
 console.log(`  · app roles: ${roleTotal} uses, ${roleUse.size} distinct${definedRoles.size ? ` of ${definedRoles.size} defined` : ''}`);
 if (roleTotal) console.log(`  · status colors (danger/success/warning/info): ${status} uses = ${Math.round((status / roleTotal) * 100)}% of role uses${status / roleTotal > 0.25 ? '  ⚠ high: status colors should mean status only (not ranks, tags or decoration)' : ''}; chart colors: ${chart}`);
 if (status / roleTotal > 0.25) warns++;
+// which files carry the status colors: a file where most role uses are status colors is usually using them for categories, ranks or tags
+if (roleTotal && status / roleTotal > 0.25) {
+  const rows = [...fileRoles.entries()].filter(([, v]) => v.status >= 3).sort((a, b) => b[1].status - a[1].status).slice(0, 5);
+  for (const [f, v] of rows) {
+    const pct = Math.round((v.status / v.total) * 100), likely = v.status >= 5 && pct >= 50;
+    console.log(`      ${relative(root, f)}: ${v.status}/${v.total} role uses are status colors (${pct}%)${likely ? '  <- mostly status colors: correct for real statuses (e.g. health ranges, validation); for categories, ranks or tags use chart-1..N, accent-soft or surface-muted' : ''}`);
+    if (likely) v.samples.forEach((s) => console.log(`          ${s.where}  ${s.what}`));
+  }
+}
 console.log(`\n${errors ? '✗' : '✓'} ${errors} failing check(s), ${warns} warning(s)`);
 process.exit(errors ? 1 : 0);

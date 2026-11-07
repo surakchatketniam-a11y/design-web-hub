@@ -105,26 +105,49 @@ export function deriveRoles(b) {
     add(`${name}-border`, mix(bg, fin.value, 0.35), `${name} border`);
   }
 
-  // chart series: brand accent first, then other chromatic palette colors, then status hues so every series is distinct
-  // a series must differ in HUE (35 degrees) from the ones already chosen, otherwise three shades of one red read as one series
-  const hueOf = (c) => {
-    const r = c.r / 255, g = c.g / 255, b = c.b / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
-    if (!d) return null;
-    const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-    return (h * 60 + 360) % 360;
+  // chart series. Series 1 is the brand accent, then chromatic brand colors, then hues from a fixed wheel (blue, green, orange, violet, teal, pink)
+  // drawn with the accent's own saturation and lightness so the whole set has one visual weight (the old status-color fallback gave a heavy brown).
+  // Every series is at least 3:1 on the page (the contrast needed for graphics) and at least 35 degrees of hue from the others.
+  // Status colors are not used: a bar must not look like an error.
+  const bgC = parseColor(bg);
+  const toHsl = (c) => {
+    const r = c.r / 255, g = c.g / 255, b = c.b / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+    let h = 0, sa = 0;
+    if (d) { sa = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h = (h * 60 + 360) % 360; }
+    return { h, s: sa, l };
   };
+  const fromHsl = ({ h, s: sa, l }) => {
+    const k = (n) => (n + h / 30) % 12, a = sa * Math.min(l, 1 - l);
+    const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return toHex({ r: f(0) * 255, g: f(8) * 255, b: f(4) * 255 });
+  };
+  const hueOf = (c) => (sat(c) < 0.2 ? null : toHsl(c).h);
   const apart = (a, c, minDeg = 35) => {
     const ha = hueOf(a), hc = hueOf(c);
-    if (ha === null || hc === null || sat(a) < 0.2 || sat(c) < 0.2) return dist(a, c) > 90; // neutrals: fall back to plain distance
+    if (ha === null || hc === null) return dist(a, c) > 90; // neutrals: fall back to plain distance
     const d = Math.abs(ha - hc); return Math.min(d, 360 - d) >= minDeg;
   };
+  // shift lightness away from the page until the color reaches 3:1 on it
+  const onPage = (hex) => {
+    const base = toHsl(parseColor(hex));
+    const walk = (dir) => {
+      const hsl = { ...base }; let i = 0;
+      while (i < 50 && contrast(parseColor(fromHsl(hsl)), bgC) < 3) { hsl.l = Math.max(0, Math.min(1, hsl.l + dir * 0.02)); i++; }
+      return { i, ok: contrast(parseColor(fromHsl(hsl)), bgC) >= 3, hex: fromHsl(hsl) };
+    };
+    const darker = walk(-1), lighter = walk(1);
+    if (darker.ok && lighter.ok) return darker.i <= lighter.i ? darker.hex : lighter.hex; // mid-tone page: the smaller change wins
+    return (darker.ok ? darker : lighter).hex;
+  };
+  const ref = toHsl(parseColor(accent));
   const picked = [parseColor(accent)];
-  const series = [accent];
-  const take = (hex, minDeg) => { const c = parseColor(hex); if (c && picked.every((p) => apart(p, c, minDeg))) { picked.push(c); series.push(toHex(c)); } };
-  solid.filter((x) => sat(x.c) > 0.35 && luminance(x.c) > 0.04 && luminance(x.c) < 0.75).sort((a, c) => sat(c.c) - sat(a.c)).forEach((x) => series.length < 4 && take(x.value));
-  for (const k of ['info', 'success', 'warning', 'danger']) if (series.length < 6) take(statusHex[k]);
-  // still short of 4 series (a palette that is mostly one hue): accept status hues that are at least 15 degrees apart
-  for (const k of ['warning', 'danger', 'info', 'success']) if (series.length < 4) take(statusHex[k], 15);
+  const series = [contrast(parseColor(accent), bgC) >= 3 ? hexOf(accent) : onPage(accent)];
+  const take = (hex, minDeg) => { const c = parseColor(hex); if (c && picked.every((q) => apart(q, c, minDeg))) { picked.push(c); series.push(toHex(c)); } };
+  solid.filter((x) => sat(x.c) > 0.35 && luminance(x.c) > 0.04 && contrast(x.c, bgC) >= 3).sort((a, c) => sat(c.c) - sat(a.c)).forEach((x) => series.length < 4 && take(x.value));
+  const wheel = { s: Math.min(0.85, Math.max(0.45, ref.s)), l: Math.min(0.6, Math.max(0.35, ref.l)) };
+  const hues = [215, 150, 30, 275, 185, 335, 60, 100];
+  for (const h of hues) if (series.length < 6) take(onPage(fromHsl({ h, ...wheel })));
+  for (const h of hues) if (series.length < 6) take(onPage(fromHsl({ h, ...wheel })), 25); // still short of 6: accept hues a little closer together
   series.forEach((hx, i) => add(`chart-${i + 1}`, hx, i === 0 ? 'chart series 1 (brand accent)' : `chart series ${i + 1}`));
   return out;
 }
