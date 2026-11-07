@@ -303,12 +303,13 @@ function renderBrandPage(b, siblings) {
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.css" download="${esc(b.slug)}-tokens.css">tokens.css</a>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.tailwind.css" download="tokens.tailwind.css">tokens.tailwind.css (Tailwind v4)</a>
       <a class="btn" href="../../d/${esc(b.slug)}/design-rules.md" download="design-rules.md">design-rules.md (Claude Code)</a>
+      <a class="btn" href="../../d/${esc(b.slug)}/check-design.mjs" download="check-design.mjs">check-design.mjs (ตัวตรวจ)</a>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.json" download="${esc(b.slug)}-tokens.json">tokens.json</a>
       <a class="btn" href="../../mix/?c=${esc(b.slug)}&t=${esc(b.slug)}&s=${esc(b.slug)}&f=${esc(b.slug)}">ใช้เป็นฐานผสมสไตล์ →</a>
     </div>
     <div class="prompt"><span class="muted">วางไฟล์ที่รากโปรเจกต์แล้วสั่ง AI:</span><code id="prompt">${esc(prompt)}</code><button class="btn sm" data-copy="${esc(prompt)}">คัดลอก</button></div>
     <div class="quick"><h2>เริ่มใช้งานในโปรเจกต์ของคุณ</h2><p class="muted">DESIGN.md อธิบายเหตุผลและกฎ ส่วน <code>tokens.css</code> คือค่าที่ใช้ในโค้ด (ถ้าสองไฟล์ต่างกัน ให้ยึด tokens.css) วางสองไฟล์ไว้ข้างกัน แล้วใส่โค้ดนี้:</p><pre id="quick">${esc(quickStart(b))}</pre><div class="qrow"><button class="btn sm" data-copy="${esc(quickStart(b))}">คัดลอกโค้ดนี้</button></div>
-      <h2 style="margin-top:16px">ทำเว็บแอปด้วย Tailwind v4 + Claude Code</h2><p class="muted">ให้ AI เลือกสีตามหน้าที่ (พื้นหลัง พื้นการ์ด เส้นขอบ ปุ่มหลัก สีสถานะ สีกราฟ) แทนการเขียน hex เอง: วางไฟล์ทั้ง 4 ไว้ในโฟลเดอร์ <code>design/</code> แล้วทำ 2 ขั้น</p>
+      <h2 style="margin-top:16px">ทำเว็บแอปด้วย Tailwind v4 + Claude Code</h2><p class="muted">ให้ AI เลือกสีตามหน้าที่ (พื้นหลัง พื้นการ์ด เส้นขอบ ปุ่มหลัก สีสถานะ สีกราฟ) แทนการเขียน hex เอง: วางไฟล์ทั้ง 4 ไว้ในโฟลเดอร์ <code>design/</code> (และ <code>check-design.mjs</code> ถ้าอยากตรวจผล) แล้วทำ 2 ขั้น</p>
       <pre id="quickApp">${esc(appStart(b))}</pre><div class="qrow"><button class="btn sm" data-copy="${esc(appStart(b))}">คัดลอกโค้ดนี้</button><span class="muted">ใส่ใน <code>CLAUDE.md</code> ให้ Claude Code อ่านกฎทุกครั้ง</span></div></div>
     ${b.format === 'legacy' ? '<p class="note">ไฟล์นี้เป็นรูปแบบเอกสารเก่า (ไม่มี token แบบ YAML) หน้านี้จึงแสดงสีที่ดึงจากข้อความเท่าที่อ่านได้</p>' : ''}
   </div></section>
@@ -366,6 +367,7 @@ function main() {
     problems.push(...verifyDownload(b, cssText));
     writeFileSync(join(dd, 'tokens.tailwind.css'), tailwindCss(b));
     writeFileSync(join(dd, 'design-rules.md'), designRules(b));
+    copyFileSync(join(ROOT, 'scripts', 'lib', 'check-design.mjs'), join(dd, 'check-design.mjs'));
     const dv = downloadView(b);
     writeFileSync(join(dd, 'tokens.json'), JSON.stringify({ name: b.name, source: SITE.upstream, ...dv.tokens, ...(Object.keys(dv.proseColors).length ? { colorsFromText: dv.proseColors } : {}), fonts: { display: dv.fonts.display, body: dv.fonts.body, thaiDisplay: dv.fonts.thaiDisplay, thaiBody: dv.fonts.thaiBody, note: 'Latin fonts have no Thai glyphs: use the Thai fonts for Thai content, body line-height >= 1.7, no letter-spacing.' } }, null, 2));
   }

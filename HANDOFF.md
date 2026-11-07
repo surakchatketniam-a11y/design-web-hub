@@ -34,6 +34,7 @@ Vercel ใช้ `vercel.json` (Build: `node scripts/build.mjs`, Output: `public
 | `scripts/lib/downloads.mjs` | สร้างไฟล์ดาวน์โหลด: `tokenCss` (tokens.css), `designAddendum` (ส่วนที่ต่อท้าย DESIGN.md), `downloadView` (เติม token ที่ YAML ไม่มีจากร้อยแก้ว), `componentCss`/`componentRules` (คลาส `.ds-*`), `quickStart` (โค้ดตัวอย่างบนหน้าแบรนด์), `verifyDownload` (ตัวตรวจตอน build) |
 | `scripts/lib/roles.mjs` | `deriveRoles`: แมปพาเลตต์ของแบรนด์เป็นบทบาทสำหรับเว็บแอป (page/surface/border/text/accent/สถานะ danger-success-warning-info/สีกราฟ chart-1..6) ใช้สีแบรนด์เมื่อมีที่เหมาะ ไม่งั้นคำนวณและปรับคอนทราสต์ (≥4.5:1 บนพื้นและบนสีอ่อนของตัวเอง) |
 | `scripts/lib/appkit.mjs` | `tailwindCss` (tokens.tailwind.css สำหรับ Tailwind v4: `bg-app-surface`, `text-app-danger` ...), `designRules` (design-rules.md ให้ Claude Code อ่านผ่าน `@design/design-rules.md` ใน CLAUDE.md), `appStart` (ขั้นตอนบนหน้าแบรนด์) |
+| `scripts/lib/check-design.mjs` | ตัวตรวจแอปของผู้ใช้ (ไม่มี dependency, อ่านอย่างเดียว) copy ไปทุกแบรนด์เป็น `/d/<brand>/check-design.mjs`: hex/พาเลตต์ Tailwind/สีอาร์บิทรารี, คลาส `app-*` ที่ไม่มีจริง, `var(--app-*)` ที่ไม่ได้ประกาศ, ตัวหนังสือ <12px, `text-app-accent` ที่ควรเป็น `accent-text`, สัดส่วนสีสถานะ exit 1 เมื่อมี ✗ |
 | `scripts/lib/legacy.mjs` | ดึง typography/radius/spacing/สีจาก **ข้อความ** ของ DESIGN.md ที่ไม่มี YAML (10 แบรนด์) ใช้เฉพาะไฟล์ดาวน์โหลด ไม่กระทบหน้าตัวอย่าง |
 | `scripts/lib/theme.mjs` | สี/คอนทราสต์ + `tuneStatus` (ตรวจ hue และคอนทราสต์ ≥4.5:1 ของสี error/success/warning) |
 | `src/layouts.mjs` | เลย์เอาต์ 14 แบบ ใช้ได้ทั้ง build และเบราว์เซอร์ มีตัวแปลไทย/อังกฤษ (`toThai`, dictionary `TH`) ถ้าเพิ่มข้อความอังกฤษใหม่ต้องเพิ่มคำแปล |
@@ -106,6 +107,14 @@ Vercel ใช้ `vercel.json` (Build: `node scripts/build.mjs`, Output: `public
 - ตรวจแล้ว: ทั้ง 74 ไฟล์คอมไพล์กับ Tailwind v4.3.5 ได้ และบทบาทผ่านคอนทราสต์ ยกเว้น 4 แบรนด์ที่สีหลักอ่อนบนพื้นขาว (renault, wise, nintendo-2001) เป็นของแบรนด์เอง
 - **ภาษาไทยในโหมด Tailwind:** `text-sm`/`text-xl` ของ Tailwind ตั้ง line-height แบบละตินตายตัว จึงข้ามกฎใน tokens.css ได้ tokens.tailwind.css เลยมีบล็อก `:root:lang(th)` ที่ override `--text-<size>--line-height` ทุกขนาด (1.7/1.5/1.4/1.3 ตามขนาด) กับ `html:lang(th)`, `[class*="tracking-"]`, `.uppercase` ตรวจแล้วด้วย Tailwind v4.3.5 ในเบราว์เซอร์: ไทย 14px=1.70, 20px=1.50, 36px=1.30, tracking/uppercase ถูกปิด ส่วน `lang="en"` ไม่เปลี่ยน
 - ตัวอย่างหน้าแอป (ไม่ track): `examples/app-sample/` HTML เดียวกัน 4 แบรนด์ ใช้เฉพาะบทบาท `app-*`
+- **บทเรียนจากการตรวจแอปจริง (4HProject, React + Vite + Tailwind v4, ใช้ชุด Airbnb):** ใช้ `app-*` 761 จุด 27 บทบาท 0 พาเลตต์ Tailwind 0 hex ในคอมโพเนนต์ แต่เจอ 3 เรื่อง แก้ที่ต้นทางแล้ว:
+  1. แอป import แค่ `tokens.tailwind.css` แต่เขียน `var(--app-*)` 30 จุด ซึ่งเดิมอยู่ใน `tokens.css` เท่านั้น → body ไม่มีสี และวงโฟกัสหาย (`outline-style:none`) ตอนนี้ `tokens.tailwind.css` มี `:root { --app-*: ... }` ในตัวเอง (ไฟล์เดียวพอ)
+  2. `text-app-accent` เป็นตัวหนังสือได้แค่ 3.3–3.5:1 บน Airbnb และรูปแบบเมนู active ในกฎของเราเองแนะนำให้ใช้ → เพิ่มบทบาท `accent-text` (ปรับจนผ่าน 4.5:1 บนพื้นและบน `accent-soft`) และกฎข้อ 9; ถ้า `on-accent` บน `accent` ต่ำกว่า 4.5:1 กฎข้อ 13 จะบอกให้ใช้ตัวอักษรใหญ่ขึ้น
+  3. ใช้ `text-[10px]` 18 จุด และสีสถานะ 31% ของการใช้บทบาท (ใช้กับอันดับ/คะแนน) → เพิ่มกฎข้อ 10 (ขนาดต่ำสุด `text-xs`) และข้อ 11 (สีสถานะใช้กับสถานะเท่านั้น) และตัวตรวจ
+  4. พื้นแดง `bg-app-accent` + ข้อความเล็ก (การ์ดคะแนน ป้าย) ได้ 3.5:1 → เพิ่มบทบาท `accent-strong` (พื้นที่ `on-accent` อ่านได้ ≥4.5:1 ทุกแบรนด์ ตรวจครบ 74; ต่างจาก accent จริงใน 7 แบรนด์) และกฎข้อ 13 ชี้ไปที่มัน
+  - ผลหลังแก้ในแอป 4H (Dashboard): ข้อความ 59 จุด ต่ำกว่า 4.5:1 เหลือ 0 (เดิม 8), ตัวเล็กสุด 12px (เดิม 10px) ✗ ที่เหลือใน checker คือ hex 3 ค่าใน `src/App.css` ซึ่งไม่ได้ถูก import (ไฟล์เทมเพลต Vite)
+  5. AI สร้างชื่อคลาสด้วยการต่อข้อความ (`bg-${habit.color.split("-")[1]}-500` ได้ `bg-app-500` ที่ไม่มีจริง) → วงกลมเลือกกิจกรรมไม่มีสีและเครื่องหมายถูกหาย Tailwind สร้าง CSS เฉพาะคลาสที่ชื่อเต็มอยู่ในซอร์ส เพิ่มกฎข้อ 13 ใน design-rules.md และเช็ก "Tailwind class names built from strings" ใน check-design.mjs (ทดสอบกับโค้ดก่อนแก้: จับได้ครบ 4 จุด; โค้ดปัจจุบัน 0)
+  - ข้อมูลที่เคยรายงานผิดตอนตรวจ: "text-muted ของแบรนด์ใช้ 63 ครั้ง" เป็นการนับซ้ำจาก `text-app-text-muted` (จริงคือ 0) ใช้ `luxe` 8 ครั้งเป็นของจริง
 - ที่ยังไม่ได้ทำ: คลาสคอมโพเนนต์แอปกลาง (`.ds-app-*`), โหมด "เว็บแอป" ในข้อความสั่ง AI บนหน้าเว็บ, ตัวอย่าง app shell ในหน้าตัวอย่าง
 
 ## ข้อควรระวังทางเทคนิค (เคยพลาดมาแล้ว)

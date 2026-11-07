@@ -61,7 +61,20 @@ export function deriveRoles(b) {
   add('accent', accent, 'primary buttons, active tab, key actions');
   const own = accent === theme.primary; // brand hover/disabled tokens belong to the brand primary, not to a fallback accent
   add('accent-hover', hover && own ? hover.value : mix(accent, ink, 0.15), 'primary button hover / pressed');
-  add('accent-soft', mix(bg, accent, dark ? 0.18 : 0.1), 'selected row, selected card, active nav item background');
+  const accentSoft = mix(bg, accent, dark ? 0.18 : 0.1);
+  // a solid accent FILL that carries small text: darkest-needed variant where on-accent text reaches 4.5:1 (Airbnb: white on #ff385c is 3.5:1)
+  let strong = accent;
+  const strongTok = hover && own ? hover.value : null;
+  if (contrast(parseColor(onAccent), parseColor(strong)) < 4.5) {
+    strong = strongTok && contrast(parseColor(onAccent), parseColor(strongTok)) >= 4.5 ? strongTok : accent;
+    for (let t = 0; t <= 1.0001 && contrast(parseColor(onAccent), parseColor(strong)) < 4.5; t += 0.05) strong = mix(accent, luminance(parseColor(onAccent)) > 0.5 ? '#000000' : '#ffffff', t);
+  }
+  add('accent-strong', strong, 'solid accent surface that carries small text (cards, badges, small buttons): on-accent text is at least 4.5:1 on it');
+  add('accent-soft', accentSoft, 'selected row, selected card, active nav item background');
+  // the raw accent is often too light to use as TEXT (Airbnb #ff385c on white is 3.5:1): this variant is nudged until it reads on the page and on accent-soft
+  let accentText = accent;
+  for (let t = 0; t <= 1.0001 && (contrast(parseColor(accentText), parseColor(bg)) < 4.5 || contrast(parseColor(accentText), parseColor(accentSoft)) < 4.5); t += 0.05) accentText = mix(accent, ink, t);
+  add('accent-text', accentText, 'accent-colored TEXT: links, active nav label, key numbers (4.5:1 on page and on accent-soft; never use plain accent for small text)');
   add('accent-border', mix(bg, accent, 0.35), 'border of a selected card / focused field');
   add('accent-disabled', disabled && own ? disabled.value : mix(bg, accent, 0.4), 'disabled primary button');
   add('on-accent', onAccent,'text/icons on an accent background');
