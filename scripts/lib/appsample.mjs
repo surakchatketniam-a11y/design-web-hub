@@ -50,7 +50,16 @@ export function appSamplePage(b0, siteTitle = 'DESIGN.md Hub') {
   .x-grow { flex: 1; }
   .x-stack { display: grid; gap: 12px; }
   .x-tablewrap { overflow-x: auto; }
-  @media (max-width: 900px) { .x-side { display: none; } .x-kpis { grid-template-columns: repeat(2, 1fr); } .x-two { grid-template-columns: 1fr; } .x-body { padding: 16px; } }
+  /* narrow screens: the sidebar becomes a scrollable strip of tabs under the top bar */
+  @media (max-width: 900px) {
+    .x-shell { flex-direction: column; }
+    .x-side { width: auto; padding: 8px 16px; border-right: 0; border-bottom: 1px solid var(--app-border); order: 1; }
+    .x-brand, .x-side .ds-app-callout { display: none; }
+    .x-side .ds-app-nav { display: flex; gap: 4px; overflow-x: auto; }
+    .x-side .ds-app-nav-item { white-space: nowrap; }
+    .x-main { order: 2; }
+    .x-kpis { grid-template-columns: repeat(2, 1fr); } .x-two { grid-template-columns: 1fr !important; } .x-body { padding: 16px; } .x-top { padding: 12px 16px; }
+  }
 </style>
 </head>
 <body class="ds-app-page">
