@@ -8,6 +8,7 @@ import { splitFrontMatter, parseYaml } from './lib/yaml.mjs';
 import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
 import { renderLanding, fontFor, categoryModel, fontPlan, fontsUrl, thaiStack, ALL_THAI_FONTS } from './lib/landing.mjs';
+import { tailwindCss, designRules, appStart } from './lib/appkit.mjs';
 import { tokenCss, designAddendum, downloadView, verifyDownload, quickStart, componentRules } from './lib/downloads.mjs';
 import { LAYOUTS, WIRE } from '../src/layouts.mjs';
 import { buildPrompt, TOOLS } from '../src/prompt.mjs';
@@ -300,11 +301,15 @@ function renderBrandPage(b, siblings) {
       <button class="btn" data-fetchcopy="../../d/${esc(b.slug)}/DESIGN.md">คัดลอก DESIGN.md</button>
       <button class="btn" data-fetchcopy="../../d/${esc(b.slug)}/DESIGN.md ../../d/${esc(b.slug)}/tokens.css">คัดลอกทั้ง 2 ไฟล์ (วางให้ AI)</button>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.css" download="${esc(b.slug)}-tokens.css">tokens.css</a>
+      <a class="btn" href="../../d/${esc(b.slug)}/tokens.tailwind.css" download="tokens.tailwind.css">tokens.tailwind.css (Tailwind v4)</a>
+      <a class="btn" href="../../d/${esc(b.slug)}/design-rules.md" download="design-rules.md">design-rules.md (Claude Code)</a>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.json" download="${esc(b.slug)}-tokens.json">tokens.json</a>
       <a class="btn" href="../../mix/?c=${esc(b.slug)}&t=${esc(b.slug)}&s=${esc(b.slug)}&f=${esc(b.slug)}">ใช้เป็นฐานผสมสไตล์ →</a>
     </div>
     <div class="prompt"><span class="muted">วางไฟล์ที่รากโปรเจกต์แล้วสั่ง AI:</span><code id="prompt">${esc(prompt)}</code><button class="btn sm" data-copy="${esc(prompt)}">คัดลอก</button></div>
-    <div class="quick"><h2>เริ่มใช้งานในโปรเจกต์ของคุณ</h2><p class="muted">DESIGN.md อธิบายเหตุผลและกฎ ส่วน <code>tokens.css</code> คือค่าที่ใช้ในโค้ด (ถ้าสองไฟล์ต่างกัน ให้ยึด tokens.css) วางสองไฟล์ไว้ข้างกัน แล้วใส่โค้ดนี้:</p><pre id="quick">${esc(quickStart(b))}</pre><div class="qrow"><button class="btn sm" data-copy="${esc(quickStart(b))}">คัดลอกโค้ดนี้</button></div></div>
+    <div class="quick"><h2>เริ่มใช้งานในโปรเจกต์ของคุณ</h2><p class="muted">DESIGN.md อธิบายเหตุผลและกฎ ส่วน <code>tokens.css</code> คือค่าที่ใช้ในโค้ด (ถ้าสองไฟล์ต่างกัน ให้ยึด tokens.css) วางสองไฟล์ไว้ข้างกัน แล้วใส่โค้ดนี้:</p><pre id="quick">${esc(quickStart(b))}</pre><div class="qrow"><button class="btn sm" data-copy="${esc(quickStart(b))}">คัดลอกโค้ดนี้</button></div>
+      <h2 style="margin-top:16px">ทำเว็บแอปด้วย Tailwind v4 + Claude Code</h2><p class="muted">ให้ AI เลือกสีตามหน้าที่ (พื้นหลัง พื้นการ์ด เส้นขอบ ปุ่มหลัก สีสถานะ สีกราฟ) แทนการเขียน hex เอง: วางไฟล์ทั้ง 4 ไว้ในโฟลเดอร์ <code>design/</code> แล้วทำ 2 ขั้น</p>
+      <pre id="quickApp">${esc(appStart(b))}</pre><div class="qrow"><button class="btn sm" data-copy="${esc(appStart(b))}">คัดลอกโค้ดนี้</button><span class="muted">ใส่ใน <code>CLAUDE.md</code> ให้ Claude Code อ่านกฎทุกครั้ง</span></div></div>
     ${b.format === 'legacy' ? '<p class="note">ไฟล์นี้เป็นรูปแบบเอกสารเก่า (ไม่มี token แบบ YAML) หน้านี้จึงแสดงสีที่ดึงจากข้อความเท่าที่อ่านได้</p>' : ''}
   </div></section>
   <div class="wrap content">
@@ -359,6 +364,8 @@ function main() {
     const cssText = tokenCss(b);
     writeFileSync(join(dd, 'tokens.css'), cssText);
     problems.push(...verifyDownload(b, cssText));
+    writeFileSync(join(dd, 'tokens.tailwind.css'), tailwindCss(b));
+    writeFileSync(join(dd, 'design-rules.md'), designRules(b));
     const dv = downloadView(b);
     writeFileSync(join(dd, 'tokens.json'), JSON.stringify({ name: b.name, source: SITE.upstream, ...dv.tokens, ...(Object.keys(dv.proseColors).length ? { colorsFromText: dv.proseColors } : {}), fonts: { display: dv.fonts.display, body: dv.fonts.body, thaiDisplay: dv.fonts.thaiDisplay, thaiBody: dv.fonts.thaiBody, note: 'Latin fonts have no Thai glyphs: use the Thai fonts for Thai content, body line-height >= 1.7, no letter-spacing.' } }, null, 2));
   }
@@ -500,7 +507,7 @@ function main() {
   mkdirSync(join(OUT, 'about'), { recursive: true });
   writeFileSync(join(OUT, 'about', 'index.html'), PAGE(`วิธีใช้ — ${SITE.title}`, `<section class="wrap content narrow"><h1>วิธีใช้</h1>
     <h2>DESIGN.md คืออะไร</h2><p>ไฟล์ markdown ธรรมดาที่บรรยายระบบดีไซน์ของเว็บ (สี ตัวอักษร ระยะห่าง คอมโพเนนต์ กฎการใช้งาน) เพื่อให้ AI ที่ช่วยเขียนโค้ดอ่านแล้วสร้าง UI ที่หน้าตาสอดคล้องกัน</p>
-    <h2>ใช้งาน 3 ขั้น</h2><ol><li>เลือกแบรนด์จากหน้าแรกและดูตัวอย่าง</li><li>กดดาวน์โหลด <code>DESIGN.md</code> <b>และ</b> <code>tokens.css</code> วางไว้ที่รากโปรเจกต์ (DESIGN.md อธิบายเหตุผลและกฎ ส่วน tokens.css คือค่าที่ใช้ในโค้ด ถ้าสองไฟล์ต่างกัน ให้ยึด tokens.css) แล้วใส่ <code>&lt;link rel="stylesheet" href="tokens.css"&gt;</code> กับลิงก์ฟอนต์ท้ายไฟล์ DESIGN.md</li><li>สั่ง AI เช่น “อ่าน DESIGN.md แล้วสร้างหน้า landing page ตามสไตล์นี้”</li></ol>
+    <h2>ใช้งาน 3 ขั้น</h2><ol><li>เลือกแบรนด์จากหน้าแรกและดูตัวอย่าง</li><li>กดดาวน์โหลด <code>DESIGN.md</code> <b>และ</b> <code>tokens.css</code> วางไว้ที่รากโปรเจกต์ (DESIGN.md อธิบายเหตุผลและกฎ ส่วน tokens.css คือค่าที่ใช้ในโค้ด ถ้าสองไฟล์ต่างกัน ให้ยึด tokens.css) แล้วใส่ <code>&lt;link rel="stylesheet" href="tokens.css"&gt;</code> กับลิงก์ฟอนต์ท้ายไฟล์ DESIGN.md<br>ทำเว็บแอปด้วย Tailwind v4 + Claude Code: เพิ่ม <code>tokens.tailwind.css</code> (ได้คลาสอย่าง <code>bg-app-surface</code>, <code>text-app-danger</code>) และ <code>design-rules.md</code> (ใส่ใน CLAUDE.md) เพื่อให้ AI เลือกสีตามหน้าที่ ไม่เขียน hex เอง</li><li>สั่ง AI เช่น “อ่าน DESIGN.md แล้วสร้างหน้า landing page ตามสไตล์นี้”</li></ol>
     <h2>ไม่รู้จะเลือกสไตล์ไหน</h2><p>ใช้ตัวกรองหน้าแรก: เลือก <strong>ความรู้สึก</strong> ที่อยากได้ (เช่น มินิมอล อบอุ่น หรูหรา) แล้วเลือก <strong>เหมาะกับ</strong> ประเภทเว็บของคุณ จากนั้นเปิดดู 2–3 แบบเทียบกัน ป้าย “โทน” และ “มุม” คำนวณจากไฟล์ DESIGN.md โดยตรง ส่วนสรุปภาษาไทยและป้ายความรู้สึก/การใช้งานเขียนจากคำอธิบายในไฟล์ อาจไม่ตรงกับความเห็นของทุกคน</p>
     <h2>ให้ AI สร้างเว็บให้ แต่ไม่ให้ออกมาหน้าตาเดิมๆ</h2><p>AI มักออกแบบแบบกลางๆ ถ้าไม่ได้รับข้อกำหนดที่ชัดเจน การวางไฟล์ <code>DESIGN.md</code> กับ <code>tokens.css</code> ไว้ในโปรเจกต์ แล้วสั่งตามแท็บ “คำสั่งให้ AI” ในหน้าแบรนด์ จะบังคับให้ AI ใช้สี ฟอนต์ และมุมโค้งที่คุณเลือก และควรเปลี่ยนชื่อ โลโก้ ภาพ และข้อความเป็นของคุณเสมอ</p>
     <h2>ข้อควรรู้</h2><ul><li>ไฟล์เหล่านี้เป็นการ “วิเคราะห์เชิงแรงบันดาลใจ” จากเว็บไซต์จริง ใช้เพื่อการเรียนรู้ ไม่ใช่ไฟล์ทางการของแบรนด์</li><li>หน้าตัวอย่างบนเว็บนี้เป็นหน้าทั่วไปที่นำสี ตัวอักษร และมุมโค้งของแบรนด์มาใส่ <strong>ไม่ใช่การจำลองเว็บจริงของแบรนด์นั้น</strong></li><li>ไม่ควรใช้โลโก้ ชื่อ หรือทำให้ผลงานของคุณดูเหมือนเป็นเว็บของแบรนด์นั้น</li><li>ฟอนต์บางตัวเป็นของเสียเงิน หน้าตัวอย่างจึงใช้ Inter แทน</li><li>ฟอนต์ละตินของแบรนด์ไม่มีตัวอักษรไทย ไฟล์ที่ดาวน์โหลดจึงมีส่วน “Thai Typography” ที่ระบุฟอนต์ไทยฟรีคู่กัน (เช่น Anuphan, Noto Serif Thai, IBM Plex Sans Thai) พร้อมกฎ line-height และการไม่ใช้ letter-spacing กับภาษาไทย หน้าตัวอย่างสลับดูเป็นภาษาไทยหรือ English ได้</li></ul>

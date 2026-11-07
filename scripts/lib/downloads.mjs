@@ -2,9 +2,11 @@
 // Goal: tokens.css and DESIGN.md must never silently disagree (fonts, line-height, Thai rules).
 import { fontFor, fontsUrlFor, thaiStack, fontPlan } from './landing.mjs';
 import { extractProseTokens, extractProseColors } from './legacy.mjs';
+import { deriveRoles } from './roles.mjs';
 
 const SAFE_CSS = /^[#\w().,%\s/+*-]+$/;
 const css = (v, fallback = '') => (typeof v === 'string' && SAFE_CSS.test(v) ? v : fallback);
+export const cssSafe = css;
 const famName = (s) => String(s || '').split(',')[0].replace(/["']/g, '').trim();
 
 /** Line-height as a unitless ratio (px values are divided by the font size); NaN when unknown. */
@@ -54,7 +56,7 @@ export function downloadView(b) {
 }
 
 /** Minimum Thai line-height by font size: small text needs the most room, big headings the least. */
-const thaiMinLh = (px) => (px >= 32 ? 1.3 : px > 24 ? 1.4 : px > 16 ? 1.5 : 1.7);
+export const thaiMinLh = (px) => (px >= 32 ? 1.3 : px > 24 ? 1.4 : px > 16 ? 1.5 : 1.7);
 
 const compClass = (name) => `ds-${String(name).replace(/[^\w-]+/g, '-')}`;
 
@@ -122,6 +124,7 @@ export function tokenCss(b0) {
     ' * Use THIS file for code; DESIGN.md explains when and why to use each token.',
     ' * If the two ever disagree, the values in this file win (fonts are substituted, see below).'];
   if (legacy) head.push(" * NOTE: this brand's DESIGN.md has no YAML token block. Colors, " + (b.fromProse.length ? b.fromProse.join(', ') : 'nothing else') + ' were read from its text (best effort):', ' * check DESIGN.md before relying on a value, and read the prose for anything missing here (e.g. component styles).');
+  head.push(' * App roles: --app-page, --app-surface, --app-text, --app-accent, --app-danger ... pick colors by purpose (full list below).');
   head.push(' * Fonts:', ...roles.map((r) => ` *   --font-${r.var}: ${fontNote(r)}`));
   if (Object.keys(b.tokens.typography).length) head.push(' * Thai: the :root:lang(th) block at the bottom zeroes letter-spacing and raises line-height. Set <html lang="th"> to enable it.');
   if (Object.keys(b.tokens.components || {}).length) head.push(' * Components: classes named .ds-<component> at the end of this file apply the recipes from DESIGN.md (padding, radius, colors, type).');
@@ -131,6 +134,8 @@ export function tokenCss(b0) {
   for (const [k, v] of Object.entries(b.tokens.rounded)) if (typeof v === 'string') lines.push(`  --radius-${k}: ${css(v, '0')};`);
   for (const [k, v] of Object.entries(b.tokens.spacing)) if (typeof v === 'string') lines.push(`  --space-${k}: ${css(v, '0')};`);
   if (Object.keys(b.proseColors).length) { lines.push('  /* colors that appear only in the DESIGN.md text, not in its YAML */'); for (const [k, v] of Object.entries(b.proseColors)) lines.push(`  --color-${k}: ${css(v, 'transparent')};`); }
+  lines.push('  /* App roles: pick colors by purpose. They point at the palette above where a color fits, otherwise they are derived and contrast-checked. */');
+  for (const ar of deriveRoles(b)) lines.push(`  --app-${ar.key}: ${ar.ref ? `var(--color-${ar.ref})` : ar.value};`);
   for (const r of roles) lines.push(`  --font-${r.var}: ${r.stack};`);
   lines.push(`  --font-thai-display: ${thaiStack(b.fonts.thaiDisplay)};`, `  --font-thai-body: ${thaiStack(b.fonts.thaiBody)};`);
   const thai = [];

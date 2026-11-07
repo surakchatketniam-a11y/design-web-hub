@@ -32,6 +32,8 @@ Vercel ใช้ `vercel.json` (Build: `node scripts/build.mjs`, Output: `public
 | `scripts/build.mjs` | ตัวสร้างเว็บทั้งหมด: หน้าแรก (ตัวช่วยเลือก 3 คำถาม, สูตรผสมแนะนำ, ส่วนก่อน–หลัง), หน้าแบรนด์, `/patterns/`, `/mix/`, `/compare/`, `/gallery/`, `/about/`, ไฟล์ดาวน์โหลด, `data/*.json` |
 | `scripts/lib/landing.mjs` | อ่านสี/ตัวอักษร/เงา/ความรู้สึกจาก DESIGN.md → ตัวแปร CSS ของหน้าตัวอย่าง; ฟอนต์ไทยคู่ละติน (`thaiFontFor`, `fontPlan`, `fontsUrl`); ข้อความตัวอย่างภาษาไทย (`COPY_TH` ฯลฯ); สี status ผ่าน `tuneStatus` |
 | `scripts/lib/downloads.mjs` | สร้างไฟล์ดาวน์โหลด: `tokenCss` (tokens.css), `designAddendum` (ส่วนที่ต่อท้าย DESIGN.md), `downloadView` (เติม token ที่ YAML ไม่มีจากร้อยแก้ว), `componentCss`/`componentRules` (คลาส `.ds-*`), `quickStart` (โค้ดตัวอย่างบนหน้าแบรนด์), `verifyDownload` (ตัวตรวจตอน build) |
+| `scripts/lib/roles.mjs` | `deriveRoles`: แมปพาเลตต์ของแบรนด์เป็นบทบาทสำหรับเว็บแอป (page/surface/border/text/accent/สถานะ danger-success-warning-info/สีกราฟ chart-1..6) ใช้สีแบรนด์เมื่อมีที่เหมาะ ไม่งั้นคำนวณและปรับคอนทราสต์ (≥4.5:1 บนพื้นและบนสีอ่อนของตัวเอง) |
+| `scripts/lib/appkit.mjs` | `tailwindCss` (tokens.tailwind.css สำหรับ Tailwind v4: `bg-app-surface`, `text-app-danger` ...), `designRules` (design-rules.md ให้ Claude Code อ่านผ่าน `@design/design-rules.md` ใน CLAUDE.md), `appStart` (ขั้นตอนบนหน้าแบรนด์) |
 | `scripts/lib/legacy.mjs` | ดึง typography/radius/spacing/สีจาก **ข้อความ** ของ DESIGN.md ที่ไม่มี YAML (10 แบรนด์) ใช้เฉพาะไฟล์ดาวน์โหลด ไม่กระทบหน้าตัวอย่าง |
 | `scripts/lib/theme.mjs` | สี/คอนทราสต์ + `tuneStatus` (ตรวจ hue และคอนทราสต์ ≥4.5:1 ของสี error/success/warning) |
 | `src/layouts.mjs` | เลย์เอาต์ 14 แบบ ใช้ได้ทั้ง build และเบราว์เซอร์ มีตัวแปลไทย/อังกฤษ (`toThai`, dictionary `TH`) ถ้าเพิ่มข้อความอังกฤษใหม่ต้องเพิ่มคำแปล |
@@ -93,6 +95,18 @@ Vercel ใช้ `vercel.json` (Build: `node scripts/build.mjs`, Output: `public
 - **แบรนด์ที่ไม่มี YAML (10 ตัว):** `legacy.mjs` อ่านตาราง Hierarchy, Border Radius Scale, Spacing System จากข้อความ (best effort) ไม่มีคลาสคอมโพเนนต์ และชื่อตัวแปรเป็นตามค่า (`--radius-4`)
 - **ตัวตรวจ:** `verifyDownload` รันทุกแบรนด์ตอน build ถ้ามี ⚠ แสดงว่าสองไฟล์อาจไม่ตรงกัน ต้องแก้ที่ generator ไม่ใช่แก้ไฟล์ผลลัพธ์ (`public/` ถูกสร้างใหม่ทุกครั้ง)
 - หน้าแบรนด์มีกล่อง "เริ่มใช้งาน" (`quickStart`), ปุ่ม "คัดลอกทั้ง 2 ไฟล์" (`data-fetchcopy` รับหลาย URL คั่นด้วยช่องว่าง) และแท็บคอมโพเนนต์แสดงชื่อคลาส + CSS จริงจาก tokens.css
+
+### ชุดเว็บแอป (app kit)
+
+ที่มา: แอปตัวอย่าง (IF Plan, Tailwind v4 + Claude Code) อ้างตัวแปรสีของเราจริงแค่ `ink`/`canvas` ที่เหลือ AI เขียน hex เอง หรือหยิบพาเลตต์ Tailwind (`red-500`, `emerald-*`) และเติมสีสถานะเองประมาณ 55 สี
+
+- tokens.css มี `--app-*` (บทบาทสี) ส่วน tokens.tailwind.css มี `--color-app-*` + สีแบรนด์ + radius + ฟอนต์ ให้ได้ utility ตรงๆ
+- design-rules.md = กฎสั้นๆ (ห้ามเขียน hex/ห้ามพาเลตต์ default ของ Tailwind, สถานะต้องใช้ 3 คลาสคู่กัน, ชั้นของ neutral) + ตารางบทบาท + แพตเทิร์น (การ์ด ปุ่ม ช่องกรอก ตาราง แจ้งเตือน)
+- tokens.tailwind.css มีโหมด strict (คอมเมนต์ไว้): `--color-*: initial;` ลบพาเลตต์เดิมของ Tailwind ผู้ใช้ต้องเปิดเอง (ถ้าเปิด คลาสอย่าง `bg-red-500` จะไม่สร้าง CSS แบบเงียบๆ)
+- ตรวจแล้ว: ทั้ง 74 ไฟล์คอมไพล์กับ Tailwind v4.3.5 ได้ และบทบาทผ่านคอนทราสต์ ยกเว้น 4 แบรนด์ที่สีหลักอ่อนบนพื้นขาว (renault, wise, nintendo-2001) เป็นของแบรนด์เอง
+- **ภาษาไทยในโหมด Tailwind:** `text-sm`/`text-xl` ของ Tailwind ตั้ง line-height แบบละตินตายตัว จึงข้ามกฎใน tokens.css ได้ tokens.tailwind.css เลยมีบล็อก `:root:lang(th)` ที่ override `--text-<size>--line-height` ทุกขนาด (1.7/1.5/1.4/1.3 ตามขนาด) กับ `html:lang(th)`, `[class*="tracking-"]`, `.uppercase` ตรวจแล้วด้วย Tailwind v4.3.5 ในเบราว์เซอร์: ไทย 14px=1.70, 20px=1.50, 36px=1.30, tracking/uppercase ถูกปิด ส่วน `lang="en"` ไม่เปลี่ยน
+- ตัวอย่างหน้าแอป (ไม่ track): `examples/app-sample/` HTML เดียวกัน 4 แบรนด์ ใช้เฉพาะบทบาท `app-*`
+- ที่ยังไม่ได้ทำ: คลาสคอมโพเนนต์แอปกลาง (`.ds-app-*`), โหมด "เว็บแอป" ในข้อความสั่ง AI บนหน้าเว็บ, ตัวอย่าง app shell ในหน้าตัวอย่าง
 
 ## ข้อควรระวังทางเทคนิค (เคยพลาดมาแล้ว)
 

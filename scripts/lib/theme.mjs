@@ -77,8 +77,8 @@ function hueOf(c) {
   const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
   return (h * 60 + 360) % 360;
 }
-const HUE_OK = { err: (h) => h <= 22 || h >= 335, ok: (h) => h >= 75 && h <= 170, warn: (h) => h >= 22 && h <= 60 };
-const SEMANTIC = { light: { err: '#b42318', ok: '#067647', warn: '#b54708' }, dark: { err: '#ff8a80', ok: '#4ade80', warn: '#fbbf24' } };
+const HUE_OK = { err: (h) => h <= 22 || h >= 335, ok: (h) => h >= 75 && h <= 170, warn: (h) => h >= 22 && h <= 60, info: (h) => h >= 190 && h <= 255 };
+const SEMANTIC = { light: { err: '#b42318', ok: '#067647', warn: '#b54708', info: '#175cd3' }, dark: { err: '#ff8a80', ok: '#4ade80', warn: '#fbbf24', info: '#7cb7ff' } };
 export const STATUS_MIN_CONTRAST = 4.5;
 
 export function tuneStatus(kind, value, bgHex, surHex) {
