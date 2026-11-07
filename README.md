@@ -18,6 +18,7 @@ content/<brand>/DESIGN.md  ──(scripts/build.mjs)──▶  public/   ──�
    — **`tokens.css` คือค่าที่ใช้ในโค้ด ถ้าต่างจาก DESIGN.md ให้ยึด tokens.css** (ฟอนต์ถูกแทนที่ด้วยฟอนต์ฟรี บันทึกไว้ในหัวไฟล์)
    — มี `--text-*-lh/-font/-transform`, บล็อก `:root:lang(th)` สำหรับภาษาไทย และคลาส `.ds-<คอมโพเนนต์>`
    — ตัวตรวจ `verifyDownload` เตือนตอน build ถ้าสองไฟล์อาจไม่ตรงกัน
+   — ชุดเว็บแอป: `tokens.tailwind.css` (Tailwind v4: `bg-app-*`), `design-rules.md` (กฎสำหรับ Claude Code), `check-design.mjs` (ตัวตรวจ) และคลาส `.ds-app-*` ในทั้ง tokens.css และ tokens.tailwind.css; ดูตัวอย่างจริงที่ `/a/<brand>/`
 4. ไฟล์รูปแบบเก่าที่ไม่มี YAML: ดึงสี ตัวอักษร radius และ spacing จากข้อความแบบ best effort (`scripts/lib/legacy.mjs`) ใช้เฉพาะไฟล์ดาวน์โหลด และระบุไว้ในหัว tokens.css
 
 ไม่มี dependency ภายนอก ใช้แค่ Node.js 18+

@@ -1,20 +1,13 @@
 // Web-app oriented downloads: a Tailwind CSS v4 theme (tokens.tailwind.css) and AI rules (design-rules.md).
 // Both are built from the brand's palette plus the app color roles in roles.mjs, so an AI picks colors by purpose
 // (bg-app-surface, text-app-danger ...) instead of hard-coding hex values or Tailwind's default palette.
-import { downloadView, fontRoles, cssSafe, thaiMinLh } from './downloads.mjs';
+import { downloadView, fontRoles, cssSafe, thaiMinLh, appRadii } from './downloads.mjs';
+import { APP_CLASSES_CSS } from './appclasses.mjs';
 
 // Tailwind v4's default type scale (rem); text-sm etc. read --text-<size>--line-height, which is what we override for Thai
 const TW_SIZES = { xs: 0.75, sm: 0.875, base: 1, lg: 1.125, xl: 1.25, '2xl': 1.5, '3xl': 1.875, '4xl': 2.25, '5xl': 3, '6xl': 3.75, '7xl': 4.5, '8xl': 6, '9xl': 8 };
 import { deriveRoles } from './roles.mjs';
 import { parseColor, contrast } from './theme.mjs';
-
-const px = (v) => { const n = parseFloat(v); return Number.isFinite(n) && /px$/.test(String(v)) ? n : NaN; };
-
-/** Radius token whose size is closest to `target` px (falls back to a plain Tailwind class name). */
-const radiusKey = (b, target, fallback) => {
-  const c = Object.entries(b.tokens.rounded).filter(([, v]) => typeof v === 'string' && px(v) > 0 && px(v) < 100).sort((a, d) => Math.abs(px(a[1]) - target) - Math.abs(px(d[1]) - target))[0];
-  return c ? c[0] : fallback;
-};
 
 /** tokens.tailwind.css: a Tailwind CSS v4 @theme block so brand and app colors become utilities. */
 export function tailwindCss(b0) {
@@ -40,9 +33,9 @@ export function tailwindCss(b0) {
   L.push('', '  /* app roles: choose colors by purpose */');
   for (const r of roles) L.push(`  --color-app-${r.key}: ${r.value};`);
   const rad = Object.entries(b.tokens.rounded).filter(([, v]) => typeof v === 'string' && cssSafe(v));
-  const radiusVal = (target, fallback) => { const k = radiusKey(b, target, ''); return k ? b.tokens.rounded[k] : fallback; };
+  const rr = appRadii(b);
   L.push('', '  /* brand-independent radius aliases: rounded-control (buttons, inputs), rounded-card (cards, panels, modals) */',
-    `  --radius-control: ${cssSafe(radiusVal(8, '8px')) || '8px'};`, `  --radius-card: ${cssSafe(radiusVal(12, '12px')) || '12px'};`);
+    `  --radius-control: ${rr.control};`, `  --radius-card: ${rr.card};`);
   if (rad.length) { L.push('', '  /* radius: rounded-<name> */'); for (const [k, v] of rad) L.push(`  --radius-${k}: ${cssSafe(v)};`); }
   L.push('', '  /* fonts: font-display, font-body ... (free substitutes, see the tokens.css header) */');
   for (const r of fr) L.push(`  --font-${r.var}: ${r.stack};`);
@@ -51,7 +44,9 @@ export function tailwindCss(b0) {
   // (an app that only imported this file ended up with undefined --app-* variables: no body color, no focus ring).
   L.push('', '/* App roles as plain CSS variables: var(--app-page), var(--app-text), var(--app-focus) ... (same values as the --color-app-* theme colors above) */', ':root {');
   for (const r of roles) L.push(`  --app-${r.key}: ${r.value};`);
-  L.push('}');
+  L.push(`  --app-radius-control: ${rr.control};`, `  --app-radius-card: ${rr.card};`, '}');
+  // Ready-made component classes (.ds-app-card, .ds-app-btn-primary ...), in the components layer so Tailwind utilities can still override them
+  L.push('', '@layer components {', APP_CLASSES_CSS.trimEnd(), '}');
   // Tailwind's text-sm / text-xl set a fixed Latin line-height and tracking-* / uppercase are easy to add, none of which suit Thai.
   L.push('', '/* Thai content (<html lang="th">): taller line-height for every text-* size, no letter-spacing, no uppercase.',
     ' * Plain CSS outside @theme, so it also beats utilities such as tracking-wide and uppercase. */',
@@ -140,6 +135,8 @@ Brand palette (also utilities, e.g. \`bg-primary\`): ${palette}
 - Alert: \`bg-app-danger-soft border border-app-danger-border text-app-danger rounded-${ctl} p-3\` (same shape for success, warning, info)
 - Empty state: icon and title \`text-app-text-muted\`, hint \`text-app-text-subtle\`, optional \`bg-app-surface-muted\` panel
 - Link: \`text-app-link hover:underline\`
+- Ready-made classes (in \`tokens.css\` and \`tokens.tailwind.css\`, also usable without Tailwind): \`.ds-app-card\`, \`.ds-app-stat-label|value|delta\`, \`.ds-app-btn\` + \`-primary|-secondary|-ghost|-danger\`, \`.ds-app-label\` \`.ds-app-input\` \`.ds-app-hint\` \`.ds-app-error\`, \`.ds-app-table\` (row \`is-selected\`), \`.ds-app-nav-item\` (\`is-active\`), \`.ds-app-segmented-item\` (\`is-active\`), \`.ds-app-select-card\` (\`is-selected\`) with \`.ds-app-check\` (\`is-checked\`), \`.ds-app-callout-*\`, \`.ds-app-badge-*\`, \`.ds-app-empty\`, \`.ds-app-progress\`. State classes are toggled by your own code. The brand's "ตัวอย่างเว็บแอป" page on the Hub shows all of them.
+- Animated check in a selectable card: \`<span class="ds-app-check is-checked"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1"/></svg></span>\` (the circle pops and the tick is drawn when \`is-checked\` is added; it respects reduced motion).
 - Chart series: \`chart-1\` first, then \`chart-2\` and so on in order; do not reuse the danger color for an ordinary series.
 `;
 }

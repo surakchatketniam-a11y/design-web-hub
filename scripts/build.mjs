@@ -9,6 +9,7 @@ import { renderMarkdown, esc } from './lib/md.mjs';
 import { parseColor, deriveTheme, resolveRef, readableOn } from './lib/theme.mjs';
 import { renderLanding, fontFor, categoryModel, fontPlan, fontsUrl, thaiStack, ALL_THAI_FONTS } from './lib/landing.mjs';
 import { tailwindCss, designRules, appStart } from './lib/appkit.mjs';
+import { appSamplePage } from './lib/appsample.mjs';
 import { tokenCss, designAddendum, downloadView, verifyDownload, quickStart, componentRules } from './lib/downloads.mjs';
 import { LAYOUTS, WIRE } from '../src/layouts.mjs';
 import { buildPrompt, TOOLS } from '../src/prompt.mjs';
@@ -193,7 +194,8 @@ const PROMPT_TYPES = [
   { key: 'shop', title: 'ร้านค้า / หน้าสินค้า', uses: ['shop'], extra: 'ส่วนที่ต้องมี: หน้าแรกพร้อมสินค้าแนะนำ, รายการสินค้าแบบการ์ดพร้อมตัวกรอง, หน้ารายละเอียดสินค้า, ตะกร้า' },
   { key: 'media', title: 'บล็อก / เว็บข่าว', uses: ['media'], extra: 'ส่วนที่ต้องมี: หน้าแรกรวมบทความเด่น, หน้าอ่านบทความ (ความกว้างบรรทัดอ่านสบายตา), หมวดหมู่, ช่องสมัครรับข่าว' },
   { key: 'local', title: 'เว็บธุรกิจท้องถิ่น (ร้านอาหาร คลินิก โรงเรียน ช่าง หน่วยงาน)', uses: ['food', 'health', 'edu', 'trade', 'gov'], extra: 'ส่วนที่ต้องมี: hero บอกว่าเราคือใครและอยู่ที่ไหน, บริการ/เมนูพร้อมราคา, รูปผลงานหรือบรรยากาศร้าน, รีวิวลูกค้า, เวลาทำการ แผนที่ และช่องทางติดต่อ (โทร, LINE) พร้อมปุ่มโทร/จองคิวที่กดง่ายบนมือถือ' },
-  { key: 'tool', title: 'แดชบอร์ด / เครื่องมือภายใน', uses: ['tool', 'docs', 'fin'], extra: 'ส่วนที่ต้องมี: sidebar, การ์ดสรุปตัวเลข, ตารางข้อมูลพร้อมค้นหา/กรอง, ฟอร์ม, ป้ายสถานะ' }
+  { key: 'tool', title: 'แดชบอร์ด / เครื่องมือภายใน', uses: ['tool', 'docs', 'fin'], extra: 'ส่วนที่ต้องมี: sidebar, การ์ดสรุปตัวเลข, ตารางข้อมูลพร้อมค้นหา/กรอง, ฟอร์ม, ป้ายสถานะ' },
+  { key: 'webapp', app: true, title: 'เว็บแอป (Tailwind v4 + Claude Code, ใช้ชุดไฟล์เว็บแอป)', uses: ['tool', 'saas', 'docs', 'fin', 'health'], extra: 'ส่วนที่ต้องมี: app shell (sidebar + แถบบน), การ์ดตัวเลขสรุป, ตารางพร้อมแถวที่เลือก, ฟอร์มพร้อมสถานะ error, การ์ดเลือกรายการ, กล่องแจ้งเตือนตามสถานะ, สถานะว่าง (empty state) และกราฟที่ใช้สี chart-*' }
 ];
 
 function listAfter(body, startRe, stopAtBlank = false) {
@@ -273,7 +275,7 @@ function renderBrandPage(b, siblings) {
       <label class="mx-f"><span>กลุ่มลูกค้า</span><input id="pAud" type="text" maxlength="120" placeholder="เช่น คนทำงานย่านอารีย์ นักท่องเที่ยว"></label></div>
     <p class="muted pnote">กรอกแล้วคำสั่งด้านล่างอัปเดตให้ทันที ข้อมูลที่กรอกอยู่ในเบราว์เซอร์ของคุณเท่านั้น ไม่ถูกส่งไปไหน เหลือช่องไหนว่างก็ได้</p>
     <div class="pgrid">${sortedPrompts.map((t) => { const rec = t.uses.some((u) => b.uses.includes(u)); const txt = buildPrompt(t, { avoid: b.name });
-      return `<article class="pcard" data-title="${esc(t.title)}" data-extra="${esc(t.extra)}" data-avoid="${esc(b.name)}"><div class="phead"><h3>${esc(t.title)}</h3>${rec ? '<em class="rec">เหมาะกับสไตล์นี้</em>' : ''}</div><pre>${esc(txt)}</pre><button class="btn sm" data-copy="${esc(txt)}">คัดลอกคำสั่ง</button></article>`; }).join('')}</div>`;
+      return `<article class="pcard" data-title="${esc(t.title)}" data-extra="${esc(t.extra)}" data-app="${t.app ? 1 : 0}" data-avoid="${esc(b.name)}"><div class="phead"><h3>${esc(t.title)}</h3>${rec ? '<em class="rec">เหมาะกับสไตล์นี้</em>' : ''}</div><pre>${esc(txt)}</pre><button class="btn sm" data-copy="${esc(txt)}">คัดลอกคำสั่ง</button></article>`; }).join('')}</div>`;
 
   const keyChars = listAfter(b.body, /key characteristics/i);
   const dos = listAfter(b.body, /^#{2,4}\s*do(?:'s)?\s*$/i), donts = listAfter(b.body, /^#{2,4}\s*don'?t(?:'s)?\s*$/i);
@@ -305,6 +307,7 @@ function renderBrandPage(b, siblings) {
       <a class="btn" href="../../d/${esc(b.slug)}/design-rules.md" download="design-rules.md">design-rules.md (Claude Code)</a>
       <a class="btn" href="../../d/${esc(b.slug)}/check-design.mjs" download="check-design.mjs">check-design.mjs (ตัวตรวจ)</a>
       <a class="btn" href="../../d/${esc(b.slug)}/tokens.json" download="${esc(b.slug)}-tokens.json">tokens.json</a>
+      <a class="btn" href="../../a/${esc(b.slug)}/">ตัวอย่างเว็บแอป (ใช้ไฟล์จริง) →</a>
       <a class="btn" href="../../mix/?c=${esc(b.slug)}&t=${esc(b.slug)}&s=${esc(b.slug)}&f=${esc(b.slug)}">ใช้เป็นฐานผสมสไตล์ →</a>
     </div>
     <div class="prompt"><span class="muted">วางไฟล์ที่รากโปรเจกต์แล้วสั่ง AI:</span><code id="prompt">${esc(prompt)}</code><button class="btn sm" data-copy="${esc(prompt)}">คัดลอก</button></div>
@@ -354,6 +357,8 @@ function main() {
   for (const b of brands) {
     const dir = join(OUT, 'b', b.slug); mkdirSync(dir, { recursive: true });
     const lctx = { v: V.preview, vLayouts: V.layouts };
+    const ad = join(OUT, 'a', b.slug); mkdirSync(ad, { recursive: true });
+    writeFileSync(join(ad, 'index.html'), appSamplePage(b, SITE.title));
     const pd = join(OUT, 'p', b.slug); mkdirSync(pd, { recursive: true });
     writeFileSync(join(pd, 'index.html'), renderLanding(b, deriveTheme(b.tokens.colors, { dark: b.darkHint, forceNight: b.forceNight }), lctx));
     b.usage = lctx.usage || [];
@@ -522,7 +527,7 @@ function main() {
   writeFileSync(join(OUT, 'data', 'mix.json'), JSON.stringify({
     brands: mixBrands, models: Object.fromEntries(CAT_KEYS.map((k) => [k, categoryModel(k)])),
     layouts: LAYOUTS.map(({ key, n, th, thai }) => ({ key, n, th, thai })),
-    prompts: PROMPT_TYPES.map(({ key, title, extra }) => ({ key, title, extra }))
+    prompts: PROMPT_TYPES.map(({ key, title, extra, app }) => ({ key, title, extra, app: !!app }))
   }));
   const FONT_LINK = fontsUrl(ALL_THAI_FONTS);
   const mixGroup = (id, label, hint) => `<div class="mx-group"><label for="mx-${id}"><b>${label}</b><small>${hint}</small></label><select id="mx-${id}"></select><div class="mx-pv" id="pv-${id}" aria-hidden="true"></div></div>`;
@@ -603,7 +608,7 @@ parent.postMessage({ type: 'ready' }, location.origin);
 
   writeFileSync(join(OUT, 'brands.json'), JSON.stringify(brands.map((b) => ({ slug: b.slug, name: b.name, category: b.category, format: b.format, colors: Object.keys(b.tokens.colors).length })), null, 2));
   writeFileSync(join(OUT, '404.html'), PAGE('ไม่พบหน้านี้', '<section class="wrap content narrow"><h1>ไม่พบหน้านี้</h1><p><a href="/">กลับหน้าแรก</a></p></section>'));
-  const sm = ['/', '/about/', '/patterns/', '/mix/', '/compare/', ...(galleryPage ? ['/gallery/'] : []), ...brands.map((b) => `/b/${b.slug}/`)];
+  const sm = ['/', '/about/', '/patterns/', '/mix/', '/compare/', ...(galleryPage ? ['/gallery/'] : []), ...brands.map((b) => `/b/${b.slug}/`), ...brands.map((b) => `/a/${b.slug}/`)];
   writeFileSync(join(OUT, 'sitemap.txt'), sm.map((p) => (SITE.url || '') + p).join('\n') + '\n');
 
   const legacy = brands.filter((b) => b.format === 'legacy').map((b) => b.slug);

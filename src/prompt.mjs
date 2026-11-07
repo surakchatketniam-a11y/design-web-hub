@@ -32,6 +32,45 @@ export const ANTI_AI = [
   'ห้ามใช้ข้อความโฆษณากลวงๆ (เช่น “ยกระดับธุรกิจของคุณ”, “ปฏิวัติวงการ”) ห้ามใช้ lorem ipsum และห้ามแต่งตัวเลข รีวิว หรือโลโก้ลูกค้าปลอม ถ้าขาดข้อมูลให้ถามผมก่อน'
 ];
 
+/** Web-app mode: the files live in design/ and design-rules.md drives the choices. */
+export const APP_ATTACH = {
+  any: 'ไฟล์ชุดดีไซน์อยู่ในโฟลเดอร์ design/ ของโปรเจกต์ (DESIGN.md, tokens.css, tokens.tailwind.css, design-rules.md, check-design.mjs) ถ้าแนบไฟล์ได้ ให้อ่านทั้งหมด ถ้าแนบไม่ได้ ผมจะวางเนื้อหา design-rules.md ต่อท้ายข้อความนี้',
+  claude: 'ไฟล์ชุดดีไซน์อยู่ในโฟลเดอร์ design/ ของโปรเจกต์ และ CLAUDE.md โหลด @design/design-rules.md ไว้แล้ว (ถ้ายังไม่มี ให้เพิ่มบรรทัดนั้นก่อน) อ่าน design-rules.md และ tokens.tailwind.css ให้ครบก่อนแก้ไฟล์',
+  chatgpt: 'ผมแนบ design-rules.md, tokens.tailwind.css และ tokens.css ไว้ในแชตนี้ (ถ้าแนบไม่ได้ ผมจะวางเนื้อหาต่อท้าย) อ่านให้ครบก่อนเริ่มเขียน',
+  cursor: 'ไฟล์ชุดดีไซน์อยู่ในโฟลเดอร์ design/ อ้างอิงด้วย @design/design-rules.md และ @design/tokens.tailwind.css และอ่านให้ครบก่อนแก้ไฟล์',
+  lovable: 'เนื้อหาของ design-rules.md และ tokens.tailwind.css ผมวางไว้ในข้อความนี้/แนบมาด้วย ให้ถือเป็นระบบดีไซน์ของโปรเจกต์และทำตามทุกครั้งที่สร้างหรือแก้หน้า',
+  v0: 'เนื้อหาของ design-rules.md และ tokens.tailwind.css ผมวางไว้ต่อท้ายข้อความนี้ ให้ถือเป็นระบบดีไซน์และทำตามอย่างเคร่งครัด'
+};
+export const ANTI_APP = [
+  'ห้ามเขียนค่าสี (#hex, rgb()) และห้ามใช้พาเลตต์ของ Tailwind (red-500, slate-*, emerald-*) ให้ใช้เฉพาะบทบาท app-* และสีแบรนด์ใน design-rules.md',
+  'ห้ามสร้างชื่อคลาส Tailwind ด้วยการต่อข้อความ (เช่น bg-${color}-500) ให้เขียนชื่อคลาสเต็มและจับคู่ตัวเลือกกับข้อความเต็ม',
+  'ห้ามใช้สีสถานะ (แดง เขียว ส้ม ฟ้า) กับอันดับ แท็ก หรือการตกแต่ง ใช้กับสถานะจริงเท่านั้น หมวดหมู่ใช้ chart-* หรือ accent-soft',
+  'ห้ามใช้ข้อความเล็กกว่า text-xs (12px) ห้ามใช้ text-[10px] และห้ามใช้ emoji แทนไอคอน',
+  'ห้ามแต่งข้อมูลจริงให้ดูน่าเชื่อถือโดยไม่บอก ถ้าใช้ข้อมูลตัวอย่างให้ระบุว่าเป็นข้อมูลตัวอย่าง'
+];
+
+function buildAppPrompt(type, o, tool, avoid) {
+  const attach = APP_ATTACH[tool.key] || APP_ATTACH.any;
+  return `ฉันกำลังสร้าง${type.title} ช่วยออกแบบและเขียนโค้ดตามชุดไฟล์ดีไซน์ในโฟลเดอร์ design/
+${attach}
+
+เนื้อหาของฉัน:
+${contentLines(o.content)}
+${type.extra}
+
+กติกา:
+1. อ่าน design/design-rules.md ให้ครบและทำตามอย่างเคร่งครัด โดยเฉพาะตารางบทบาทสีและแพตเทิร์น (การ์ด ปุ่ม ช่องกรอก ตาราง แจ้งเตือน เมนู)
+2. เลือกสีตามหน้าที่ด้วยบทบาท app-* (bg-app-surface, text-app-danger, border-app-border ...) สถานะต้องใช้ 3 คลาสคู่กัน (soft + border + text) ตัวหนังสือสี accent ใช้ text-app-accent-text และพื้น accent ที่มีข้อความเล็กใช้ bg-app-accent-strong
+3. ตั้ง <html lang="th"> เมื่อเนื้อหาเป็นภาษาไทย (ชุดไฟล์จัด line-height และปิด letter-spacing ให้อัตโนมัติ) ใช้ rounded-control กับปุ่ม/ช่องกรอก และ rounded-card กับการ์ด
+4. ใช้ Tailwind CSS v4: @import "./tokens.tailwind.css" ต่อจาก @import "tailwindcss" (ถ้าโปรเจกต์ไม่ใช้ Tailwind ให้ใช้ tokens.css และคลาส .ds-app-* เช่น .ds-app-card, .ds-app-btn-primary, .ds-app-table)
+5. ใช้ชื่อ โลโก้ และข้อความของฉันเอง — ห้ามใช้ชื่อหรือโลโก้ของ ${avoid}
+6. รองรับมือถือ ปุ่มและพื้นที่แตะอย่างน้อย 40px และใช้ HTML ที่เข้าถึงได้ง่าย (semantic tags, วงโฟกัสแป้นพิมพ์ชัดเจน)
+7. เมื่อเสร็จ รัน node design/check-design.mjs src แก้ทุกข้อที่ขึ้น ✗ แล้วสรุปสั้นๆ ว่าตัดสินใจเรื่องดีไซน์อะไรไปบ้าง
+
+ข้อห้ามสำหรับเว็บแอป:
+${ANTI_APP.map((x) => `- ${x}`).join('\n')}`;
+}
+
 export const contentLines = (c = {}) => {
   const rows = [['ชื่อเว็บ/ธุรกิจ', c.name], ['บริการหรือสินค้าหลัก', c.offer], ['กลุ่มลูกค้า', c.audience]].filter(([, v]) => v && String(v).trim());
   return rows.length ? rows.map(([k, v]) => `- ${k}: ${String(v).trim().replace(/\s+/g, ' ')}`).join('\n') : '[ใส่ชื่อเว็บ ธุรกิจ และสิ่งที่อยากสื่อ]';
@@ -44,6 +83,7 @@ export const contentLines = (c = {}) => {
 export function buildPrompt(type, o = {}) {
   const tool = TOOLS.find((t) => t.key === o.tool) || TOOLS[0];
   const avoid = o.avoid || 'แบรนด์ที่เป็นแรงบันดาลใจ';
+  if (type.app) return buildAppPrompt(type, o, tool, avoid);
   return `ฉันกำลังสร้าง${type.title} ช่วยออกแบบและเขียนโค้ดตามระบบดีไซน์ในไฟล์ DESIGN.md และ tokens.css
 ${tool.attach}
 

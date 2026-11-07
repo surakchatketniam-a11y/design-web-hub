@@ -3,6 +3,7 @@
 import { fontFor, fontsUrlFor, thaiStack, fontPlan } from './landing.mjs';
 import { extractProseTokens, extractProseColors } from './legacy.mjs';
 import { deriveRoles } from './roles.mjs';
+import { APP_CLASSES_CSS } from './appclasses.mjs';
 
 const SAFE_CSS = /^[#\w().,%\s/+*-]+$/;
 const css = (v, fallback = '') => (typeof v === 'string' && SAFE_CSS.test(v) ? v : fallback);
@@ -109,6 +110,17 @@ export function componentCss(b) {
     ' * Built only from the variables above; state variants (-active, -disabled...) are separate classes. */', ...blocks].join('\n');
 }
 
+/** Brand-independent radii for apps: the brand radius closest to 8px (controls) and 12px (cards). */
+export function appRadii(b) {
+  const px = (v) => (/px$/.test(String(v)) ? parseFloat(v) : NaN);
+  const near = (target, fallback) => {
+    const c = Object.entries(b.tokens.rounded || {}).filter(([, v]) => typeof v === 'string' && px(v) > 0 && px(v) < 100 && css(v))
+      .sort((a, d) => Math.abs(px(a[1]) - target) - Math.abs(px(d[1]) - target))[0];
+    return c ? c[1] : fallback;
+  };
+  return { control: near(8, '8px'), card: near(12, '12px') };
+}
+
 export function tokenCss(b0) {
   const b = downloadView(b0);
   const roles = fontRoles(b);
@@ -136,6 +148,8 @@ export function tokenCss(b0) {
   if (Object.keys(b.proseColors).length) { lines.push('  /* colors that appear only in the DESIGN.md text, not in its YAML */'); for (const [k, v] of Object.entries(b.proseColors)) lines.push(`  --color-${k}: ${css(v, 'transparent')};`); }
   lines.push('  /* App roles: pick colors by purpose. They point at the palette above where a color fits, otherwise they are derived and contrast-checked. */');
   for (const ar of deriveRoles(b)) lines.push(`  --app-${ar.key}: ${ar.ref ? `var(--color-${ar.ref})` : ar.value};`);
+  const rr = appRadii(b);
+  lines.push(`  --app-radius-control: ${rr.control};`, `  --app-radius-card: ${rr.card};`);
   for (const r of roles) lines.push(`  --font-${r.var}: ${r.stack};`);
   lines.push(`  --font-thai-display: ${thaiStack(b.fonts.thaiDisplay)};`, `  --font-thai-body: ${thaiStack(b.fonts.thaiBody)};`);
   const thai = [];
@@ -161,6 +175,7 @@ export function tokenCss(b0) {
   }
   const comps = componentCss(b);
   if (comps) lines.push('', comps);
+  lines.push('', APP_CLASSES_CSS.trimEnd());
   return lines.join('\n') + '\n';
 }
 

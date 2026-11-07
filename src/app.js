@@ -185,7 +185,7 @@
     var refresh = function () {
       if (!AP) return;
       pcards.forEach(function (c) {
-        var txt = AP.buildPrompt({ title: c.getAttribute('data-title'), extra: c.getAttribute('data-extra') }, { avoid: c.getAttribute('data-avoid'), tool: fv('pTool'), content: { name: fv('pName'), offer: fv('pOffer'), audience: fv('pAud') } });
+        var txt = AP.buildPrompt({ title: c.getAttribute('data-title'), extra: c.getAttribute('data-extra'), app: c.getAttribute('data-app') === '1' }, { avoid: c.getAttribute('data-avoid'), tool: fv('pTool'), content: { name: fv('pName'), offer: fv('pOffer'), audience: fv('pAud') } });
         c.querySelector('pre').textContent = txt; c.querySelector('[data-copy]').setAttribute('data-copy', txt);
       });
     };
