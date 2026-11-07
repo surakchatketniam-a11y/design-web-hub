@@ -10,8 +10,8 @@ export function appSamplePage(b0, siteTitle = 'DESIGN.md Hub') {
   const b = downloadView(b0), f = b.fonts, roles = deriveRoles(b);
   const fontsHref = fontsUrlFor(fontRoles(b).map((r) => r.stack), [f.thaiDisplay, f.thaiBody]);
   const nChart = roles.filter((r) => r.key.startsWith('chart-')).length;
-  const bars = [[62, 40, 24], [48, 58, 30], [86, 52, 36], [70, 44, 28]];
-  const legend = ['เว็บไซต์', 'แอป', 'หน้าร้าน'];
+  const bars = [[62, 40, 24, 32], [48, 58, 30, 22], [86, 52, 36, 44], [70, 44, 28, 38]];
+  const legend = ['เว็บไซต์', 'แอป', 'หน้าร้าน', 'พาร์ตเนอร์'];
   const chartBar = (h, i) => `<span style="height:${h}%;background:var(--app-chart-${Math.min(i + 1, nChart)})"></span>`;
   const check = (on) => `<span class="ds-app-check${on ? ' is-checked' : ''}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1"/></svg></span>`;
   const habit = (t, d, on) => `<div class="ds-app-select-card${on ? ' is-selected' : ''}" role="checkbox" tabindex="0" aria-checked="${on ? 'true' : 'false'}"><div class="x-grow"><b>${t}</b><div class="ds-app-hint">${d}</div></div>${check(on)}</div>`;

@@ -111,11 +111,25 @@ function parseSpacing(body) {
   return out;
 }
 
+/** Brands without YAML give radii as bare numbers (--radius-4, --radius-20): name them by size like the YAML brands (none, xs, sm, md ...). Named and pill/circle keys stay. */
+const RADIUS_SCALE = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl'];
+function nameRadii(r) {
+  const numeric = Object.entries(r).filter(([k, v]) => /^\d+(p\d+)?$/.test(k) && /px$/.test(v) && parseFloat(v) > 0 && parseFloat(v) < 500).sort((a, b) => parseFloat(a[1]) - parseFloat(b[1]));
+  const rename = new Map(numeric.map(([k], i) => [k, RADIUS_SCALE[i] || `s${i + 1}`]));
+  const out = {};
+  for (const [k, v] of Object.entries(r)) {
+    let nk = parseFloat(v) === 0 ? 'none' : rename.get(k) || k;
+    while (nk in out) nk += '-2';
+    out[nk] = v;
+  }
+  return out;
+}
+
 /** { typography, rounded, spacing } parsed from prose; each may be empty. */
 export function extractProseTokens(body) {
   // a "." is not valid inside a CSS custom-property name (--space-21.44), so 21.44 becomes 21p44
   const safe = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.replace(/\./g, 'p'), v]));
-  return { typography: parseTypography(body), rounded: safe(parseRadius(body)), spacing: safe(parseSpacing(body)) };
+  return { typography: parseTypography(body), rounded: nameRadii(safe(parseRadius(body))), spacing: safe(parseSpacing(body)) };
 }
 
 /** "- **Name** (`#hex`)" color bullets found in the prose, keyed by slug. */

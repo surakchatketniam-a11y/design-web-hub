@@ -98,7 +98,33 @@ function componentBlocks(b) {
     else if (c.borderColor !== undefined) add('border-color', val(c.borderColor));
     if (c.shadow !== undefined) add('box-shadow', val(c.shadow));
     if (c['aspect-ratio'] !== undefined) add('aspect-ratio', val(c['aspect-ratio']));
-    if (d.length) blocks.push([name, `.${compClass(name)} {\n${d.join('\n')}\n}`]);
+    // table / list / row / empty-state properties of the "ex-*" component family: rules for the children of the component class
+    const cls = compClass(name), subs = [];
+    const typoList = (ref) => {
+      const k = typeof ref === 'string' ? (ref.match(/^\{typography\.([^}]+)\}$/) || [])[1] : '';
+      const tt = k && T.typography[k];
+      if (!tt || typeof tt !== 'object') return [];
+      const o = [];
+      if (tt.fontFamily) o.push(`font-family: var(--text-${k}-font, inherit)`);
+      if (tt.fontSize) o.push(`font-size: var(--text-${k}-size)`);
+      if (tt.fontWeight) o.push(`font-weight: var(--text-${k}-weight)`);
+      if (tt.lineHeight !== undefined) o.push(`line-height: var(--text-${k}-lh)`);
+      if (tt.letterSpacing !== undefined) o.push(`letter-spacing: var(--text-${k}-tracking)`);
+      if (tt.textTransform) o.push(`text-transform: var(--text-${k}-transform)`);
+      return o;
+    };
+    const sub = (sels, decls) => {
+      const dd = decls.filter(Boolean);
+      if (dd.length) subs.push(`${sels.map((x) => `.${cls}${x}`).join(', ')} {\n${dd.map((x) => `  ${x};`).join('\n')}\n}`);
+    };
+    const v = (raw) => (raw === undefined ? '' : val(raw));
+    if (c.headerBackground !== undefined || c.headerTypography !== undefined) sub([' th'], [v(c.headerBackground) ? `background: ${v(c.headerBackground)}` : '', 'text-align: left', ...typoList(c.headerTypography)]);
+    if (c.cellPadding !== undefined) sub([' th', ' td'], [v(c.cellPadding) ? `padding: ${v(c.cellPadding)}` : '']);
+    if (c.bodyTypography !== undefined || c.rowBorder !== undefined) sub([' td'], [...typoList(c.bodyTypography), v(c.rowBorder) ? `border-bottom: 1px solid ${v(c.rowBorder)}` : '']);
+    if (v(c['item-divider'])) sub([' > * + *'], [`border-top: 1px solid ${v(c['item-divider'])}`]);
+    if (v(c.activeIndicator)) sub([' .is-active', ' [aria-current="page"]'], [`box-shadow: inset 3px 0 0 ${v(c.activeIndicator)}`]);
+    if (c.captionTypography !== undefined) sub([' p', ' .caption'], typoList(c.captionTypography));
+    if (d.length || subs.length) blocks.push([name, [d.length ? `.${cls} {\n${d.join('\n')}\n}` : '', ...subs].filter(Boolean).join('\n')]);
   }
   return blocks;
 }
