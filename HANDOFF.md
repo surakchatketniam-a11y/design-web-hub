@@ -20,7 +20,7 @@
 2e. **ตัวตรวจ emoji (เสร็จแล้ว, ระดับ ⚠):** จับ emoji สี/ตัวอักษรที่บังคับด้วย U+FE0F ในซอร์สที่ไม่ใช่ CSS ข้ามคอมเมนต์ ไม่จับ © ® ™ ลูกศร ✓ ★ แยก "ไอคอน" กับ "emoji ในเนื้อหาผู้ใช้" ไม่ได้ จึงเป็นคำเตือน; กฎข้อ 10 ใน design-rules.md บอกให้ใช้ชุดไอคอน SVG ชุดเดียว (4H พบ 29 จุด)
 3. **งานเล็ก (เสร็จแล้ว):** (ก) แบรนด์ไม่มี YAML ตั้งชื่อ radius ตามขนาด (`none`, `xs`, `sm`, `md` ... `pill`, `circle`) แทน `--radius-4` — ข้อสังเกต: ค่าที่ ≥48px แต่ <500px (เช่น starbucks 50px) ยังได้ชื่อขนาด ไม่ใช่ `pill`; (ข) YAML กลุ่มคอมโพเนนต์ `ex-*` (13 แบรนด์: data-table-cell, cart-drawer, app-shell-row, empty-state-card) ได้กฎลูก (`th`, `td`, `> * + *`, `.is-active`, `p`) ใน tokens.css ผ่าน `componentBlocks`
 3b. **โปรเจกต์ 4H** (แอปที่ใช้ทดสอบชุดไฟล์) แยกไปดูแลในเซสชันอื่น ไม่ต้องแก้จาก repo นี้ ผลที่ย้อนมาปรับชุดไฟล์ของเราอยู่ในข้อ 2b–2e และ "บทเรียนจากการตรวจแอปจริง" ด้านบนแล้ว (ถ้าเซสชัน 4H ส่งผลตัวตรวจกลับมา ให้ปรับกฎ/ตัวตรวจตามผลจริง)
-4. ตัดสินใจเรื่องไฟล์ untracked: `designmd-hub-ux-review.md`, `examples/app-sample/` (ผลคอมไพล์ตัวอย่าง สร้างซ้ำได้)
+4. ~~ไฟล์ untracked~~ **commit แล้ว:** `designmd-hub-ux-review.md` และ `examples/app-sample/` (snapshot เก่ากว่าเว็บ: สร้างก่อนมี `accent-text`/`accent-strong`/สีกราฟใหม่ ดูของปัจจุบันที่ `/a/<brand>/`) ยังเหลือรูปแกลเลอรีใน `gallery-before-after/cafe-befor-after/shots/*.png` (32 ไฟล์) ที่ยังไม่ track
 
 **ก่อนลงมือ:** `cd` ไปที่รากโปรเจกต์ (ไม่ใช่ `public/`) แล้ว `node scripts/build.mjs`; `node scripts/serve.mjs 4173` ดูผล; ก่อน commit ดู `git diff --stat` และ `git ls-files --eol` (ไฟล์ปนกัน: `build.mjs`/`src/app.js` เป็น CRLF ที่เหลือส่วนใหญ่ LF); ตรวจ CR ด้วย `tr -cd '\r' < ไฟล์ | wc -c` ไม่ใช่ `grep -c`; อย่าแก้ไฟล์ในโปรเจกต์อื่นของผู้ใช้ (เช่น `D:\www\4HProject`) โดยไม่ได้รับอนุญาตและสำรองก่อนเสมอ
 
@@ -68,7 +68,7 @@ Vercel ใช้ `vercel.json` (Build: `node scripts/build.mjs`, Output: `public
 | `curation.json` | สรุปไทย ป้ายความรู้สึก/การใช้งาน (รวมประเภทธุรกิจ food/health/edu/trade/gov) และ `tone` override — **เขียนโดย AI ควรให้คนตรวจ** |
 | `recipes.json` | สูตรผสมแนะนำ 6 สูตรบนหน้าแรก (ผมเลือกจากป้ายความรู้สึก เปิดดูภาพจริงแค่ 3 สูตร) |
 | `gallery-before-after/` | ข้อมูลแกลเลอรี: โฟลเดอร์ root = ชุดช่างไฟฟ้า, `cafe-befor-after/` = ชุดร้านกาแฟ (ชื่อโฟลเดอร์สะกด "befor" ใช้งานได้), `gov-before-after/` = ชุดหน่วยงาน แต่ละชุดมี `gallery.json`, `prompts.md`, `shots/*.webp` (PNG ต้นฉบับไม่ได้อยู่ใน git) |
-| `designmd-hub-ux-review.md` | รายงาน UX audit ที่ใช้เป็นแผนงาน (ยังไม่ได้ commit ตั้งใจไม่ใส่) |
+| `designmd-hub-ux-review.md` | รายงาน UX audit ที่ใช้เป็นแผนงาน (6 ต.ค. 2026; commit แล้ว) |
 
 ### รูปแบบของชุดโจทย์ในแกลเลอรี (`gallery.json`)
 
@@ -129,7 +129,7 @@ Vercel ใช้ `vercel.json` (Build: `node scripts/build.mjs`, Output: `public
 - tokens.tailwind.css มีโหมด strict (คอมเมนต์ไว้): `--color-*: initial;` ลบพาเลตต์เดิมของ Tailwind ผู้ใช้ต้องเปิดเอง (ถ้าเปิด คลาสอย่าง `bg-red-500` จะไม่สร้าง CSS แบบเงียบๆ)
 - ตรวจแล้ว: ทั้ง 74 ไฟล์คอมไพล์กับ Tailwind v4.3.5 ได้ และบทบาทผ่านคอนทราสต์ ยกเว้น 4 แบรนด์ที่สีหลักอ่อนบนพื้นขาว (renault, wise, nintendo-2001) เป็นของแบรนด์เอง
 - **ภาษาไทยในโหมด Tailwind:** `text-sm`/`text-xl` ของ Tailwind ตั้ง line-height แบบละตินตายตัว จึงข้ามกฎใน tokens.css ได้ tokens.tailwind.css เลยมีบล็อก `:root:lang(th)` ที่ override `--text-<size>--line-height` ทุกขนาด (1.7/1.5/1.4/1.3 ตามขนาด) กับ `html:lang(th)`, `[class*="tracking-"]`, `.uppercase` ตรวจแล้วด้วย Tailwind v4.3.5 ในเบราว์เซอร์: ไทย 14px=1.70, 20px=1.50, 36px=1.30, tracking/uppercase ถูกปิด ส่วน `lang="en"` ไม่เปลี่ยน
-- ตัวอย่างหน้าแอป (ไม่ track): `examples/app-sample/` HTML เดียวกัน 4 แบรนด์ ใช้เฉพาะบทบาท `app-*`
+- ตัวอย่างหน้าแอป (snapshot, commit แล้ว): `examples/app-sample/` HTML เดียวกัน 4 แบรนด์ ใช้เฉพาะบทบาท `app-*`
 - **บทเรียนจากการตรวจแอปจริง (4HProject, React + Vite + Tailwind v4, ใช้ชุด Airbnb):** ใช้ `app-*` 761 จุด 27 บทบาท 0 พาเลตต์ Tailwind 0 hex ในคอมโพเนนต์ แต่เจอ 3 เรื่อง แก้ที่ต้นทางแล้ว:
   1. แอป import แค่ `tokens.tailwind.css` แต่เขียน `var(--app-*)` 30 จุด ซึ่งเดิมอยู่ใน `tokens.css` เท่านั้น → body ไม่มีสี และวงโฟกัสหาย (`outline-style:none`) ตอนนี้ `tokens.tailwind.css` มี `:root { --app-*: ... }` ในตัวเอง (ไฟล์เดียวพอ)
   2. `text-app-accent` เป็นตัวหนังสือได้แค่ 3.3–3.5:1 บน Airbnb และรูปแบบเมนู active ในกฎของเราเองแนะนำให้ใช้ → เพิ่มบทบาท `accent-text` (ปรับจนผ่าน 4.5:1 บนพื้นและบน `accent-soft`) และกฎข้อ 9; ถ้า `on-accent` บน `accent` ต่ำกว่า 4.5:1 กฎข้อ 13 จะบอกให้ใช้ตัวอักษรใหญ่ขึ้น

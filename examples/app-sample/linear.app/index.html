@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ระบบจัดการคำสั่งซื้อ</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="bg-app-page text-app-text font-body min-h-screen">
+<div class="flex min-h-screen">
+
+  <!-- sidebar -->
+  <aside class="w-60 shrink-0 bg-app-surface-muted border-r border-app-border p-4 hidden md:block">
+    <div class="flex items-center gap-2 px-2 py-3">
+      <span class="w-8 h-8 rounded-full bg-app-accent text-app-on-accent grid place-items-center font-display font-semibold">O</span>
+      <span class="font-display font-semibold">Orders Pro</span>
+    </div>
+    <nav class="mt-4 grid gap-1 text-sm">
+      <a class="px-3 py-2 rounded-control bg-app-accent-soft text-app-accent font-medium" href="#">ภาพรวม</a>
+      <a class="px-3 py-2 rounded-control text-app-text-muted hover:bg-app-surface" href="#">คำสั่งซื้อ</a>
+      <a class="px-3 py-2 rounded-control text-app-text-muted hover:bg-app-surface" href="#">ลูกค้า</a>
+      <a class="px-3 py-2 rounded-control text-app-text-muted hover:bg-app-surface" href="#">สินค้าคงคลัง</a>
+      <a class="px-3 py-2 rounded-control text-app-text-muted hover:bg-app-surface" href="#">ตั้งค่า</a>
+    </nav>
+    <div class="mt-8 bg-app-info-soft border border-app-info-border text-app-info rounded-control p-3 text-sm">
+      มีอัปเดตใหม่ v2.4 พร้อมใช้งานแล้ว
+    </div>
+  </aside>
+
+  <div class="flex-1 min-w-0">
+    <!-- top bar -->
+    <header class="bg-app-surface border-b border-app-border px-6 h-16 flex items-center justify-between">
+      <h1 class="text-xl font-display font-semibold">ภาพรวมคำสั่งซื้อ</h1>
+      <div class="flex items-center gap-3">
+        <input class="bg-app-surface text-app-text border border-app-border-strong placeholder:text-app-text-subtle focus:outline-none focus:ring-2 focus:ring-app-focus rounded-control px-3 py-2 text-sm w-56" placeholder="ค้นหาคำสั่งซื้อ…">
+        <button class="bg-app-accent text-app-on-accent hover:bg-app-accent-hover disabled:bg-app-accent-disabled rounded-control px-4 py-2 text-sm font-medium">+ สร้างคำสั่งซื้อ</button>
+      </div>
+    </header>
+
+    <main class="p-6 grid gap-6">
+
+      <!-- alerts -->
+      <div class="grid gap-3 md:grid-cols-2">
+        <div class="bg-app-warning-soft border border-app-warning-border text-app-warning rounded-control p-3 text-sm">สินค้า 3 รายการใกล้หมดสต็อก</div>
+        <div class="bg-app-danger-soft border border-app-danger-border text-app-danger rounded-control p-3 text-sm">การชำระเงิน 2 รายการล้มเหลว ต้องตรวจสอบ</div>
+      </div>
+
+      <!-- KPI -->
+      <section class="grid gap-4 grid-cols-2 xl:grid-cols-4">
+        <div class="bg-app-surface border border-app-border rounded-card p-4">
+          <p class="text-sm text-app-text-muted">ยอดขายวันนี้</p>
+          <p class="mt-2 text-3xl font-display font-semibold">฿48,320</p>
+          <p class="mt-1 text-sm text-app-success">▲ 12.4% จากเมื่อวาน</p>
+        </div>
+        <div class="bg-app-surface border border-app-border rounded-card p-4">
+          <p class="text-sm text-app-text-muted">คำสั่งซื้อใหม่</p>
+          <p class="mt-2 text-3xl font-display font-semibold">126</p>
+          <p class="mt-1 text-sm text-app-success">▲ 8 รายการ</p>
+        </div>
+        <div class="bg-app-surface border border-app-border rounded-card p-4">
+          <p class="text-sm text-app-text-muted">รอจัดส่ง</p>
+          <p class="mt-2 text-3xl font-display font-semibold">37</p>
+          <p class="mt-1 text-sm text-app-warning">5 รายการเกินกำหนด</p>
+        </div>
+        <div class="bg-app-surface border border-app-border rounded-card p-4">
+          <p class="text-sm text-app-text-muted">อัตราคืนสินค้า</p>
+          <p class="mt-2 text-3xl font-display font-semibold">2.1%</p>
+          <p class="mt-1 text-sm text-app-danger">▼ สูงกว่าเป้า 0.4%</p>
+        </div>
+      </section>
+
+      <div class="grid gap-6 xl:grid-cols-3">
+        <!-- chart -->
+        <section class="xl:col-span-2 bg-app-surface border border-app-border rounded-card p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-display font-semibold">ยอดขายรายสัปดาห์ แยกช่องทาง</h2>
+            <div class="flex gap-4 text-sm text-app-text-muted">
+              <span class="flex items-center gap-1"><i class="w-3 h-3 rounded-full bg-app-chart-1"></i>เว็บไซต์</span>
+              <span class="flex items-center gap-1"><i class="w-3 h-3 rounded-full bg-app-chart-2"></i>แอป</span>
+              <span class="flex items-center gap-1"><i class="w-3 h-3 rounded-full bg-app-chart-3"></i>หน้าร้าน</span>
+            </div>
+          </div>
+          <svg viewBox="0 0 420 160" class="mt-4 w-full h-44" role="img" aria-label="กราฟแท่งยอดขาย">
+            <g class="stroke-app-border-subtle" stroke-width="1">
+              <line x1="0" y1="40" x2="420" y2="40"/><line x1="0" y1="80" x2="420" y2="80"/><line x1="0" y1="120" x2="420" y2="120"/>
+            </g>
+            <g>
+              <rect x="20"  y="70" width="14" height="70" rx="3" class="fill-app-chart-1"/><rect x="38"  y="90" width="14" height="50" rx="3" class="fill-app-chart-2"/><rect x="56"  y="105" width="14" height="35" rx="3" class="fill-app-chart-3"/>
+              <rect x="110" y="55" width="14" height="85" rx="3" class="fill-app-chart-1"/><rect x="128" y="80" width="14" height="60" rx="3" class="fill-app-chart-2"/><rect x="146" y="100" width="14" height="40" rx="3" class="fill-app-chart-3"/>
+              <rect x="200" y="40" width="14" height="100" rx="3" class="fill-app-chart-1"/><rect x="218" y="70" width="14" height="70" rx="3" class="fill-app-chart-2"/><rect x="236" y="95" width="14" height="45" rx="3" class="fill-app-chart-3"/>
+              <rect x="290" y="60" width="14" height="80" rx="3" class="fill-app-chart-1"/><rect x="308" y="75" width="14" height="65" rx="3" class="fill-app-chart-2"/><rect x="326" y="98" width="14" height="42" rx="3" class="fill-app-chart-3"/>
+            </g>
+          </svg>
+        </section>
+
+        <!-- form -->
+        <section class="bg-app-surface border border-app-border rounded-card p-4">
+          <h2 class="font-display font-semibold">ตัวกรอง</h2>
+          <form class="mt-3 grid gap-3 text-sm">
+            <label class="grid gap-1"><span class="text-app-text-muted">สถานะ</span>
+              <select class="bg-app-surface text-app-text border border-app-border-strong focus:outline-none focus:ring-2 focus:ring-app-focus rounded-control px-3 py-2"><option>ทั้งหมด</option><option>รอชำระ</option></select>
+            </label>
+            <label class="grid gap-1"><span class="text-app-text-muted">ช่วงวันที่</span>
+              <input class="bg-app-surface text-app-text border border-app-border-strong placeholder:text-app-text-subtle focus:outline-none focus:ring-2 focus:ring-app-focus rounded-control px-3 py-2" placeholder="01/11/2569 – 07/11/2569">
+            </label>
+            <label class="grid gap-1"><span class="text-app-text-muted">หมายเลขคำสั่งซื้อ</span>
+              <input class="bg-app-surface text-app-text border border-app-danger placeholder:text-app-text-subtle focus:outline-none focus:ring-2 focus:ring-app-focus rounded-control px-3 py-2" value="ORD-00">
+              <span class="text-app-danger text-xs">รูปแบบไม่ถูกต้อง</span>
+            </label>
+            <div class="flex gap-2 pt-1">
+              <button type="button" class="bg-app-accent text-app-on-accent hover:bg-app-accent-hover rounded-control px-4 py-2 font-medium">ใช้ตัวกรอง</button>
+              <button type="button" class="bg-app-surface text-app-text border border-app-border-strong hover:bg-app-surface-muted rounded-control px-4 py-2">ล้างค่า</button>
+              <button type="button" disabled class="bg-app-accent-disabled text-app-on-accent rounded-control px-4 py-2 ml-auto">บันทึก</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <!-- table -->
+      <section class="bg-app-surface border border-app-border rounded-card overflow-hidden">
+        <div class="px-4 py-3 flex items-center justify-between border-b border-app-border">
+          <h2 class="font-display font-semibold">คำสั่งซื้อล่าสุด</h2>
+          <a class="text-app-link hover:underline text-sm" href="#">ดูทั้งหมด</a>
+        </div>
+        <table class="w-full text-sm">
+          <thead class="bg-app-surface-muted text-app-text-muted text-left">
+            <tr class="border-b border-app-border"><th class="px-4 py-2 font-medium">เลขที่</th><th class="px-4 py-2 font-medium">ลูกค้า</th><th class="px-4 py-2 font-medium">ยอดรวม</th><th class="px-4 py-2 font-medium">สถานะ</th></tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-app-border-subtle"><td class="px-4 py-3">ORD-1042</td><td class="px-4 py-3">สมชาย ใจดี</td><td class="px-4 py-3">฿1,290</td><td class="px-4 py-3"><span class="bg-app-success-soft border border-app-success-border text-app-success rounded-full px-2 py-0.5 text-xs">ชำระแล้ว</span></td></tr>
+            <tr class="border-b border-app-border-subtle bg-app-accent-soft"><td class="px-4 py-3">ORD-1043</td><td class="px-4 py-3">วิภา สุขสันต์</td><td class="px-4 py-3">฿4,850</td><td class="px-4 py-3"><span class="bg-app-warning-soft border border-app-warning-border text-app-warning rounded-full px-2 py-0.5 text-xs">รอชำระ</span></td></tr>
+            <tr class="border-b border-app-border-subtle"><td class="px-4 py-3">ORD-1044</td><td class="px-4 py-3">ธนากร มั่นคง</td><td class="px-4 py-3">฿920</td><td class="px-4 py-3"><span class="bg-app-danger-soft border border-app-danger-border text-app-danger rounded-full px-2 py-0.5 text-xs">ล้มเหลว</span></td></tr>
+            <tr><td class="px-4 py-3">ORD-1045</td><td class="px-4 py-3">ปราณี รักษา</td><td class="px-4 py-3">฿2,310</td><td class="px-4 py-3"><span class="bg-app-info-soft border border-app-info-border text-app-info rounded-full px-2 py-0.5 text-xs">กำลังจัดส่ง</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- empty state -->
+      <section class="bg-app-surface-muted border border-app-border-subtle rounded-card p-8 text-center">
+        <p class="font-display font-semibold text-app-text-muted">ยังไม่มีคำสั่งซื้อที่ถูกคืนเงิน</p>
+        <p class="mt-1 text-sm text-app-text-subtle">เมื่อมีการคืนเงิน รายการจะแสดงที่นี่</p>
+        <button class="mt-4 bg-app-surface text-app-text border border-app-border-strong hover:bg-app-surface-muted rounded-control px-4 py-2 text-sm">เรียนรู้เพิ่มเติม</button>
+      </section>
+    </main>
+  </div>
+</div>
+</body>
+</html>
