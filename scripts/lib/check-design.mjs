@@ -70,7 +70,7 @@ const R = {
   tracking: /(?<![\w-])(?:[a-z0-9-]+:)*tracking-[a-z]+/g,
   upper: /(?<![\w-])(?:[a-z0-9-]+:)*uppercase(?![\w-])/g
 };
-const found = { emoji: [], undefinedDs: [], smallOnAccent: [], dynamic: [], hex: [], fn: [], pal: [], bw: [], arb: [], tiny: [], undefinedRole: [], undefinedVar: [], accentPlain: 0, brand: [], tracking: 0, upper: 0 };
+const found = { smallTargets: [], emoji: [], undefinedDs: [], smallOnAccent: [], dynamic: [], hex: [], fn: [], pal: [], bw: [], arb: [], tiny: [], undefinedRole: [], undefinedVar: [], accentPlain: 0, brand: [], tracking: 0, upper: 0 };
 const roleUse = new Map(); let roleTotal = 0;
 // per file: how many role uses there are and how many of them are status colors (danger/success/warning/info), with sample lines
 const STATUS_ROLE = /^(danger|success|warning|info)/;
@@ -81,6 +81,22 @@ const isComment = (text, idx) => { const ls = text.lastIndexOf('\n', idx) + 1; r
 // follow the same tag name to its closing tag (depth counted, at most 80 lines), and report a text-xs / text-sm inside that block.
 const ATTRS = String.raw`(?:[^<>{}"']|"[^"]*"|'[^']*'|\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})*`;
 const SMALL_G = /(?<![\w-])(?:[a-z0-9-]+:)*text-(?:xs|sm)(?![\w-])/g;
+// Touch targets: a button / link / input / select whose class list has a fixed height of 32px or less (h-1 .. h-8, no breakpoint prefix)
+// and no phone-size minimum (min-h-10 or larger) is below the 40px minimum on phones. Opening tags only, no JSX parser; kit classes are 40px already.
+const TARGET_TAGS = /^(?:button|a|input|select|textarea|summary)$/i;
+function smallTargets(f, t) {
+  const hits = [];
+  const open = new RegExp('<([A-Za-z][\\w.]*)(' + ATTRS + ')>', 'g');
+  for (const m of t.matchAll(open)) {
+    if (!TARGET_TAGS.test(m[1]) && !/role=["'](?:button|tab|link)["']/.test(m[2])) continue;
+    if (/type=["'](?:hidden|checkbox|radio)["']/.test(m[2])) continue; // checkboxes and radios have their own hit areas
+    const h = m[2].match(/(?<![\w:-])h-([1-8])(?![\w.-])/);
+    if (!h) continue;
+    if (/(?<![\w:-])min-h-(?:10|11|12|14|16)(?![\w.-])/.test(m[2]) || /ds-app-(?:btn|input)(?![\w-])/.test(m[2])) continue;
+    hits.push({ where: loc(f, t, m.index), what: `<${m[1]}> h-${h[1]} (${h[1] * 4}px) without min-h-10` });
+  }
+  return hits;
+}
 function accentFillSmall(f, t) {
   const hits = [], seen = new Set();
   const open = new RegExp('<([A-Za-z][\\w.]*)(' + ATTRS + ')>', 'g');
@@ -112,6 +128,7 @@ files.forEach((f, i) => {
   for (const m of t.matchAll(R.role)) { roleTotal++; roleUse.set(m[1], (roleUse.get(m[1]) || 0) + 1);
     const fr = fileRoles.get(f) || { total: 0, status: 0, samples: [] }; fileRoles.set(f, fr); fr.total++;
     if (STATUS_ROLE.test(m[1])) { fr.status++; if (fr.samples.length < 3) fr.samples.push({ where: loc(f, t, m.index), what: m[0] }); } if (definedRoles.size && !definedRoles.has(m[1])) found.undefinedRole.push({ where: loc(f, t, m.index), what: m[0] }); }
+  if (!/\.css$/.test(f)) found.smallTargets.push(...smallTargets(f, t));
   if (!/\.css$/.test(f)) {
     for (const m of t.matchAll(R.dyn)) {
       if (isComment(t, m.index)) continue;
@@ -164,6 +181,7 @@ console.log('\nClasses');
 check('error', found.dynamic, 'Tailwind class names built from strings (bg-${x}-500, "text-" + x)', 'they silently produce no CSS: write full class names and map variants to complete strings');
 if (definedDs.size) check('error', found.undefinedDs, '.ds-app-* classes that the kit does not define (they silently do nothing)'); else console.log('  · .ds-app-* classes not checked (the theme file does not define them: use the latest kit files)');
 console.log('\nText');
+check('warn', found.smallTargets, 'buttons, links or fields shorter than 40px on phones', 'add min-h-10 (use sm:min-h-0 to compact them on wide screens), or use .ds-app-btn / .ds-app-input');
 check('warn', found.smallOnAccent, `small text (text-xs/text-sm) on bg-app-accent: on-accent text is only ${onAccentCr.toFixed(1)}:1 on this brand`, definedRoles.has('accent-strong') ? 'use bg-app-accent-strong for surfaces with small text; element-level heuristic, no JSX parser: check the reported element' : 'use text-base or larger');
 check('warn', found.emoji, 'emoji in the source', 'icons must come from one SVG icon set, not emoji (emoji inside real user content is fine)');
 check('warn', langIssues, 'Thai text found but <html lang="th"> is missing', 'the kit\'s Thai line-height and tracking rules only apply under lang="th"');
