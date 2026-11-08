@@ -115,7 +115,8 @@ Files kept next to this one: \`DESIGN.md\` (the written design system: intent, d
 11. **Status colors mean status only** (error, success, warning, info). Do not use them for ranks, categories, tags, tiers or decoration: use \`app-chart-*\` for categories, \`app-accent-soft\` for highlights and \`app-surface-muted\` for neutral chips.
 12. **Prefer \`app-*\` roles over brand palette names** (\`text-muted\`, \`bg-canvas\`, \`border-hairline\`) for structure and text. Use a brand palette color only for a deliberate brand moment (a hero, a badge for a sub-brand).
 13. **Never build Tailwind class names from strings** (\`bg-\${color}-500\`, \`border-\${tone}\`, \`'text-' + level\`). Tailwind only generates a class when its full name appears in the source, so a built name silently produces no CSS (an unstyled circle, an invisible border). Write every class out in full and map each variant to complete strings, for example \`{ danger: 'bg-app-danger-soft text-app-danger', success: 'bg-app-success-soft text-app-success' }\`.
-${onAccentRule}${onAccentRule ? 15 : 14}. **Check before you finish:** run \`node design/check-design.mjs src\` (adjust the paths) and fix every ✗ it reports.
+${onAccentRule}${onAccentRule ? 15 : 14}. **Do not edit, replace or "simplify" the files in the design folder** (\`DESIGN.md\`, \`tokens.css\`, \`tokens.tailwind.css\`, \`design-rules.md\`, \`check-design.mjs\`). They are generated and shared; a rewritten checker passes while checking less. If a rule or a check blocks the task, say so to the user and explain why instead of changing the file.
+${onAccentRule ? 16 : 15}. **Check before you finish:** run \`node design/check-design.mjs src\` (adjust the paths) and fix every ✗ it reports.
 
 ## Color roles
 

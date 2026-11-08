@@ -77,6 +77,33 @@ const STATUS_ROLE = /^(danger|success|warning|info)/;
 const fileRoles = new Map();
 const loc = (f, text, idx) => `${relative(root, f)}:${text.slice(0, idx).split('\n').length}`;
 const isComment = (text, idx) => { const ls = text.lastIndexOf('\n', idx) + 1; return /^\s*(\/\/|\*|\/\*|<!--)/.test(text.slice(ls, text.indexOf('\n', idx) < 0 ? undefined : text.indexOf('\n', idx))); };
+// Small text on an accent fill, element level (no JSX parser): find every opening tag whose class list has a plain bg-app-accent,
+// follow the same tag name to its closing tag (depth counted, at most 80 lines), and report a text-xs / text-sm inside that block.
+const ATTRS = String.raw`(?:[^<>{}"']|"[^"]*"|'[^']*'|\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})*`;
+const SMALL_G = /(?<![\w-])(?:[a-z0-9-]+:)*text-(?:xs|sm)(?![\w-])/g;
+function accentFillSmall(f, t) {
+  const hits = [], seen = new Set();
+  const open = new RegExp('<([A-Za-z][\\w.]*)(' + ATTRS + ')>', 'g');
+  for (const m of t.matchAll(open)) {
+    if (!R.accentFill.test(m[2])) continue;
+    const tag = m[1];
+    let end = m.index + m[0].length;
+    if (!/\/\s*$/.test(m[2])) { // not self-closing: walk to the matching close
+      const walk = new RegExp('<(/?)' + tag.replace('.', '\\.') + '(?![\\w.-])(' + ATTRS + ')>', 'g');
+      walk.lastIndex = end;
+      let depth = 1, w;
+      const limit = t.split('\n').slice(0, t.slice(0, m.index).split('\n').length + 80).join('\n').length;
+      while (depth > 0 && (w = walk.exec(t)) && w.index < limit) { if (w[1]) depth--; else if (!/\/\s*$/.test(w[2])) depth++; end = w.index + w[0].length; }
+    }
+    const block = t.slice(m.index, end);
+    const small = [...block.matchAll(SMALL_G)][0];
+    if (!small) continue;
+    const at = loc(f, t, m.index + small.index);
+    if (seen.has(at)) continue; seen.add(at);
+    hits.push({ where: at, what: `${small[0]} inside <${tag}> with bg-app-accent (line ${t.slice(0, m.index).split('\n').length})` });
+  }
+  return hits;
+}
 files.forEach((f, i) => {
   const t = allText[i];
   const push = (arr, re, fn) => { for (const m of t.matchAll(re)) { if (isComment(t, m.index)) continue; arr.push(fn ? fn(m) : { where: loc(f, t, m.index), what: m[0] }); } };
@@ -85,10 +112,23 @@ files.forEach((f, i) => {
   for (const m of t.matchAll(R.role)) { roleTotal++; roleUse.set(m[1], (roleUse.get(m[1]) || 0) + 1);
     const fr = fileRoles.get(f) || { total: 0, status: 0, samples: [] }; fileRoles.set(f, fr); fr.total++;
     if (STATUS_ROLE.test(m[1])) { fr.status++; if (fr.samples.length < 3) fr.samples.push({ where: loc(f, t, m.index), what: m[0] }); } if (definedRoles.size && !definedRoles.has(m[1])) found.undefinedRole.push({ where: loc(f, t, m.index), what: m[0] }); }
-  if (!/\.css$/.test(f)) { push(found.dynamic, R.dyn); push(found.emoji, R.emoji); }
+  if (!/\.css$/.test(f)) {
+    for (const m of t.matchAll(R.dyn)) {
+      if (isComment(t, m.index)) continue;
+      const ls = t.lastIndexOf('\n', m.index) + 1, le = t.indexOf('\n', m.index), line = t.slice(ls, le < 0 ? undefined : le);
+      const layout = /^(?:[a-z0-9-]+:)*(?:rounded|p|px|py|m|mx|my|w|h|gap)-/.test(m[0]);
+      if (layout && !/className|class=|clsx\(|\bcn\(|classNames\(/.test(line)) continue; // w-<id> built from a variable is usually a data key, not a class
+      found.dynamic.push({ where: loc(f, t, m.index), what: m[0] });
+    }
+    push(found.emoji, R.emoji);
+  }
   if (!/\.css$/.test(f) && definedDs.size) for (const m of t.matchAll(R.ds)) if (!definedDs.has(m[1])) found.undefinedDs.push({ where: loc(f, t, m.index), what: m[1] });
-  // heuristic (same line only): an accent fill and small text together, when white-on-accent is below 4.5:1 for this brand
-  if (!/\.css$/.test(f) && onAccentCr < 4.5) t.split('\n').forEach((line, n) => { if (R.accentFill.test(line) && R.smallText.test(line) && !/^\s*(\/\/|\*)/.test(line)) found.smallOnAccent.push({ where: `${relative(root, f)}:${n + 1}`, what: line.trim().slice(0, 90) }); });
+  // small text on an accent fill: element level for markup, same line for class names kept in JS strings; only when on-accent is below 4.5:1 here
+  if (!/\.css$/.test(f) && onAccentCr < 4.5) {
+    const markup = accentFillSmall(f, t), known = new Set(markup.map((h) => h.where));
+    found.smallOnAccent.push(...markup);
+    t.split('\n').forEach((line, n) => { const w = `${relative(root, f)}:${n + 1}`; if (R.accentFill.test(line) && R.smallText.test(line) && !/^\s*(\/\/|\*)/.test(line) && !known.has(w) && !markup.some((h) => h.what.endsWith(`(line ${n + 1})`))) found.smallOnAccent.push({ where: w, what: line.trim().slice(0, 90) }); });
+  }
   for (const m of t.matchAll(R.varApp)) if (!effectiveVars.has(m[1])) found.undefinedVar.push({ where: loc(f, t, m.index), what: `var(--app-${m[1]})` });
   found.accentPlain += (t.match(R.accentPlain) || []).length; found.tracking += (t.match(R.tracking) || []).length; found.upper += (t.match(R.upper) || []).length;
   push(found.brand, R.brand);
@@ -124,7 +164,7 @@ console.log('\nClasses');
 check('error', found.dynamic, 'Tailwind class names built from strings (bg-${x}-500, "text-" + x)', 'they silently produce no CSS: write full class names and map variants to complete strings');
 if (definedDs.size) check('error', found.undefinedDs, '.ds-app-* classes that the kit does not define (they silently do nothing)'); else console.log('  · .ds-app-* classes not checked (the theme file does not define them: use the latest kit files)');
 console.log('\nText');
-check('warn', found.smallOnAccent, `small text (text-xs/text-sm) on bg-app-accent: on-accent text is only ${onAccentCr.toFixed(1)}:1 on this brand`, definedRoles.has('accent-strong') ? 'use bg-app-accent-strong for surfaces with small text; same-line check only' : 'use text-base or larger');
+check('warn', found.smallOnAccent, `small text (text-xs/text-sm) on bg-app-accent: on-accent text is only ${onAccentCr.toFixed(1)}:1 on this brand`, definedRoles.has('accent-strong') ? 'use bg-app-accent-strong for surfaces with small text; element-level heuristic, no JSX parser: check the reported element' : 'use text-base or larger');
 check('warn', found.emoji, 'emoji in the source', 'icons must come from one SVG icon set, not emoji (emoji inside real user content is fine)');
 check('warn', langIssues, 'Thai text found but <html lang="th"> is missing', 'the kit\'s Thai line-height and tracking rules only apply under lang="th"');
 check('error', found.tiny, 'text smaller than 12px (text-[10px] ...)', 'smallest allowed is text-xs; Thai body text is text-sm or larger');
